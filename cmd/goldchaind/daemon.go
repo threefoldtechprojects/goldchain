@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/threefoldtechprojects/goldchain/pkg/config"
+	"github.com/nbh-digital/goldchain/pkg/config"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/threefoldtech/rivine/modules"
@@ -22,7 +22,7 @@ import (
 	"github.com/threefoldtech/rivine/modules/wallet"
 	rivineapi "github.com/threefoldtech/rivine/pkg/api"
 	"github.com/threefoldtech/rivine/pkg/daemon"
-	goldchaintypes "github.com/threefoldtechprojects/goldchain/pkg/types"
+	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
 )
 
 func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifierSet) error {

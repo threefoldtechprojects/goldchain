@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/threefoldtechprojects/goldchain/pkg/config"
+	"github.com/nbh-digital/goldchain/pkg/config"
 
 	"github.com/threefoldtech/rivine/types"
 )

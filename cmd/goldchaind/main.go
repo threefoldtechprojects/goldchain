@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/rivine/pkg/cli"
 	"github.com/threefoldtech/rivine/pkg/daemon"
-	"github.com/threefoldtechprojects/goldchain/pkg/config"
+	"github.com/nbh-digital/goldchain/pkg/config"
 )
 
 func main() {

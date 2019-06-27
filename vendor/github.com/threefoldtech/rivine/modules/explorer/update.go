@@ -3,12 +3,11 @@ package explorer
 import (
 	"fmt"
 
+	bolt "github.com/rivine/bbolt"
 	"github.com/threefoldtech/rivine/build"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/pkg/encoding/siabin"
 	"github.com/threefoldtech/rivine/types"
-
-	"github.com/rivine/bbolt"
 )
 
 // ProcessConsensusChange follows the most recent changes to the consensus set,
@@ -141,7 +140,12 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 				}
 				for _, sci := range txn.CoinInputs {
 					dbAddCoinOutputID(tx, sci.ParentID, txid)
-					mapParentUnlockConditionHash(tx, sci.ParentID, txid)
+					err := mapParentUnlockConditionHash(tx, sci.ParentID, txid)
+					if err != nil {
+						e.log.Output(2, fmt.Sprintf(
+							"[ERROR] failed to map tx %s to parent unlock condition Hash for parent coin output ID %s\n",
+							txid.String(), sci.ParentID.String()))
+					}
 				}
 				for k, sfo := range txn.BlockStakeOutputs {
 					sfoid := txn.BlockStakeOutputID(uint64(k))
@@ -151,7 +155,12 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 				}
 				for _, sfi := range txn.BlockStakeInputs {
 					dbAddBlockStakeOutputID(tx, sfi.ParentID, txid)
-					mapParentUnlockConditionHash(tx, sfi.ParentID, txid)
+					err := mapParentUnlockConditionHash(tx, sfi.ParentID, txid)
+					if err != nil {
+						e.log.Output(2, fmt.Sprintf(
+							"[ERROR] failed to map tx %s to parent unlock condition Hash for parent blockstake output ID %s\n",
+							txid.String(), sfi.ParentID.String()))
+					}
 				}
 
 				// add any common extension data, should the txn have it
@@ -215,7 +224,7 @@ func (e *Explorer) dbCalculateBlockFacts(tx *bolt.Tx, block types.Block) blockFa
 	// get target
 	target, exists := e.cs.ChildTarget(block.ParentID)
 	if !exists {
-		panic(fmt.Sprint("ConsensusSet is missing target of known block", block.ParentID))
+		build.Critical(fmt.Errorf("ConsensusSet is missing target of known block %v", block.ParentID))
 	}
 
 	// update fields
@@ -232,7 +241,7 @@ func (e *Explorer) dbCalculateBlockFacts(tx *bolt.Tx, block types.Block) blockFa
 	if bf.Height > e.chainCts.MaturityDelay {
 		oldBlock, exists := e.cs.BlockAtHeight(bf.Height - e.chainCts.MaturityDelay)
 		if !exists {
-			panic(fmt.Sprint("ConsensusSet is missing block at height", bf.Height-e.chainCts.MaturityDelay))
+			build.Critical(fmt.Errorf("ConsensusSet is missing block at height %v", bf.Height-e.chainCts.MaturityDelay))
 		}
 		maturityTimestamp = oldBlock.Timestamp
 	}
@@ -246,11 +255,11 @@ func (e *Explorer) dbCalculateBlockFacts(tx *bolt.Tx, block types.Block) blockFa
 		for i := types.BlockHeight(1); i < ActiveBSEstimationBlocks; i++ {
 			b, exists := e.cs.BlockAtHeight(bf.Height - i)
 			if !exists {
-				panic(fmt.Sprint("ConsensusSet is missing block at height", bf.Height-i))
+				build.Critical(fmt.Errorf("ConsensusSet is missing block at height %v", bf.Height-i))
 			}
 			target, exists := e.cs.ChildTarget(b.ParentID)
 			if !exists {
-				panic(fmt.Sprint("ConsensusSet is missing target of known block", b.ParentID))
+				build.Critical(fmt.Errorf("ConsensusSet is missing target of known block %v", b.ParentID))
 			}
 			totalDifficulty = totalDifficulty.AddDifficulties(
 				target, e.chainCts.RootDepth)
@@ -315,7 +324,7 @@ func (e *Explorer) dbAddGenesisBlock(tx *bolt.Tx) {
 // helper functions
 func assertNil(err error) {
 	if err != nil {
-		panic(err)
+		build.Critical(err)
 	}
 }
 func mustPut(bucket *bolt.Bucket, key, val interface{}) {
@@ -413,13 +422,13 @@ func dbRemoveTransactionID(tx *bolt.Tx, id types.TransactionID) {
 	mustDelete(tx.Bucket(bucketTransactionIDs), id)
 }
 
-func mapParentUnlockConditionHash(tx *bolt.Tx, parentID interface{}, txid types.TransactionID) {
+func mapParentUnlockConditionHash(tx *bolt.Tx, parentID interface{}, txid types.TransactionID) error {
 	switch id := parentID.(type) {
 	case types.CoinOutputID:
 		var sco types.CoinOutput
 		err := dbGetAndDecode(bucketCoinOutputs, id, &sco)(tx)
 		if err != nil {
-			return
+			return err
 		}
 		mapUnlockConditionHash(tx, sco.Condition, txid)
 
@@ -427,21 +436,23 @@ func mapParentUnlockConditionHash(tx *bolt.Tx, parentID interface{}, txid types.
 		var bso types.BlockStakeOutput
 		err := dbGetAndDecode(bucketBlockStakeOutputs, id, &bso)(tx)
 		if err != nil {
-			return
+			return err
 		}
 		mapUnlockConditionHash(tx, bso.Condition, txid)
 
 	default:
-		panic(fmt.Sprintf("unexpected output ID type: %T", parentID))
+		build.Critical(fmt.Errorf("unexpected output ID type: %T", parentID))
 	}
+
+	return nil
 }
-func unmapParentUnlockConditionHash(tx *bolt.Tx, parentID interface{}, txid types.TransactionID) {
+func unmapParentUnlockConditionHash(tx *bolt.Tx, parentID interface{}, txid types.TransactionID) error {
 	switch id := parentID.(type) {
 	case types.CoinOutputID:
 		var sco types.CoinOutput
 		err := dbGetAndDecode(bucketCoinOutputs, id, &sco)(tx)
 		if err != nil {
-			return
+			return err
 		}
 		unmapUnlockConditionHash(tx, sco.Condition, txid)
 
@@ -449,13 +460,14 @@ func unmapParentUnlockConditionHash(tx *bolt.Tx, parentID interface{}, txid type
 		var bso types.BlockStakeOutput
 		err := dbGetAndDecode(bucketBlockStakeOutputs, id, &bso)(tx)
 		if err != nil {
-			return
+			return err
 		}
 		unmapUnlockConditionHash(tx, bso.Condition, txid)
 
 	default:
-		panic(fmt.Sprintf("unexpected output ID type: %T", parentID))
+		build.Critical(fmt.Errorf("unexpected output ID type: %T", parentID))
 	}
+	return nil
 }
 func mapUnlockConditionHash(tx *bolt.Tx, ucp types.UnlockConditionProxy, txid types.TransactionID) {
 	muh := ucp.UnlockHash()
@@ -478,16 +490,12 @@ func mapUnlockConditionMultiSigAddress(tx *bolt.Tx, muh types.UnlockHash, cond t
 	case types.ConditionTypeTimeLock:
 		cg, ok := cond.(types.MarshalableUnlockConditionGetter)
 		if !ok {
-			if build.DEBUG {
-				panic(fmt.Sprintf("unexpected Go-type for TimeLockCondition: %T", cond))
-			}
+			build.Severe(fmt.Errorf("unexpected Go-type for TimeLockCondition: %T", cond))
 			return
 		}
 		cond = cg.GetMarshalableUnlockCondition()
 		if cond == nil {
-			if build.DEBUG {
-				panic("unexpected nil-type for Internal condition of TimeLockCondition")
-			}
+			build.Severe(fmt.Errorf("unexpected nil-type for Internal condition of TimeLockCondition"))
 			return
 		}
 		mapUnlockConditionMultiSigAddress(tx, muh, cond, txid)
@@ -495,9 +503,7 @@ func mapUnlockConditionMultiSigAddress(tx *bolt.Tx, muh types.UnlockHash, cond t
 	case types.ConditionTypeMultiSignature:
 		mcond, ok := cond.(types.UnlockHashSliceGetter)
 		if !ok {
-			if build.DEBUG {
-				panic(fmt.Sprintf("unexpected Go-type for MultiSignatureCondition: %T", cond))
-			}
+			build.Severe(fmt.Errorf("unexpected Go-type for MultiSignatureCondition: %T", cond))
 			return
 		}
 		// map the multisig address to all internal addresses
@@ -511,16 +517,12 @@ func unmapUnlockConditionMultiSigAddress(tx *bolt.Tx, muh types.UnlockHash, cond
 	case types.ConditionTypeTimeLock:
 		cg, ok := cond.(types.MarshalableUnlockConditionGetter)
 		if !ok {
-			if build.DEBUG {
-				panic(fmt.Sprintf("unexpected Go-type for TimeLockCondition: %T", cond))
-			}
+			build.Severe(fmt.Errorf("unexpected Go-type for TimeLockCondition: %T", cond))
 			return
 		}
 		cond = cg.GetMarshalableUnlockCondition()
 		if cond == nil {
-			if build.DEBUG {
-				panic("unexpected nil-type for Internal condition of TimeLockCondition")
-			}
+			build.Severe(fmt.Errorf("unexpected nil-type for Internal condition of TimeLockCondition"))
 			return
 		}
 		unmapUnlockConditionMultiSigAddress(tx, muh, cond, txid)
@@ -528,9 +530,7 @@ func unmapUnlockConditionMultiSigAddress(tx *bolt.Tx, muh types.UnlockHash, cond
 	case types.ConditionTypeMultiSignature:
 		mcond, ok := cond.(types.UnlockHashSliceGetter)
 		if !ok {
-			if build.DEBUG {
-				panic(fmt.Sprintf("unexpected Go-type for MultiSignatureCondition: %T", cond))
-			}
+			build.Severe(fmt.Errorf("unexpected Go-type for MultiSignatureCondition: %T", cond))
 			return
 		}
 		// unmap the multisig address to all internal addresses
@@ -560,10 +560,10 @@ func dbRemoveUnlockHash(tx *bolt.Tx, uh types.UnlockHash, txid types.Transaction
 func dbAddWalletAddressToMultiSigAddressMapping(tx *bolt.Tx, walletAddress, multiSigAddress types.UnlockHash, txid types.TransactionID) {
 	if build.DEBUG {
 		if walletAddress.Type != types.UnlockTypePubKey {
-			panic(fmt.Sprintf("wallet address has wrong type: %d", walletAddress.Type))
+			build.Critical(fmt.Errorf("wallet address has wrong type: %d", walletAddress.Type))
 		}
 		if multiSigAddress.Type != types.UnlockTypeMultiSig {
-			panic(fmt.Sprintf("multisig address has wrong type: %d", multiSigAddress.Type))
+			build.Critical(fmt.Errorf("multisig address has wrong type: %d", multiSigAddress.Type))
 		}
 	}
 	wab, err := tx.Bucket(bucketWalletAddressToMultiSigAddressMapping).CreateBucketIfNotExists(siabin.Marshal(walletAddress))
@@ -575,10 +575,10 @@ func dbAddWalletAddressToMultiSigAddressMapping(tx *bolt.Tx, walletAddress, mult
 func dbRemoveWalletAddressToMultiSigAddressMapping(tx *bolt.Tx, walletAddress, multiSigAddress types.UnlockHash, txid types.TransactionID) {
 	if build.DEBUG {
 		if walletAddress.Type != types.UnlockTypePubKey {
-			panic(fmt.Sprintf("wallet address has wrong type: %d", walletAddress.Type))
+			build.Critical(fmt.Errorf("wallet address has wrong type: %d", walletAddress.Type))
 		}
 		if multiSigAddress.Type != types.UnlockTypeMultiSig {
-			panic(fmt.Sprintf("multisig address has wrong type: %d", multiSigAddress.Type))
+			build.Critical(fmt.Errorf("multisig address has wrong type: %d", multiSigAddress.Type))
 		}
 	}
 	mb := tx.Bucket(bucketWalletAddressToMultiSigAddressMapping)

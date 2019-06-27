@@ -3,12 +3,11 @@ package consensus
 import (
 	"errors"
 
+	bolt "github.com/rivine/bbolt"
 	"github.com/threefoldtech/rivine/build"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/pkg/encoding/siabin"
 	"github.com/threefoldtech/rivine/types"
-
-	"github.com/rivine/bbolt"
 )
 
 var (
@@ -28,22 +27,22 @@ func commitDiffSetSanity(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirect
 
 	// Diffs should have already been generated for this node.
 	if !pb.DiffsGenerated {
-		panic(errDiffsNotGenerated)
+		build.Critical(errDiffsNotGenerated)
 	}
 
 	// Current node must be the input node's parent if applying, and
 	// current node must be the input node if reverting.
 	if dir == modules.DiffApply {
 		parent, err := getBlockMap(tx, pb.Block.ParentID)
-		if build.DEBUG && err != nil {
-			panic(err)
+		if err != nil {
+			build.Severe(err)
 		}
 		if parent.Block.ID() != currentBlockID(tx) {
-			panic(errWrongAppliedDiffSet)
+			build.Critical(errWrongAppliedDiffSet)
 		}
 	} else {
 		if pb.Block.ID() != currentBlockID(tx) {
-			panic(errWrongRevertDiffSet)
+			build.Critical(errWrongRevertDiffSet)
 		}
 	}
 }
@@ -144,8 +143,8 @@ func commitDiffSet(tx *bolt.Tx, pb *processedBlock, dir modules.DiffDirection) {
 func (cs *ConsensusSet) generateAndApplyDiff(tx *bolt.Tx, pb *processedBlock) error {
 	// Sanity check - the block being applied should have the current block as
 	// a parent.
-	if build.DEBUG && pb.Block.ParentID != currentBlockID(tx) {
-		panic(errInvalidSuccessor)
+	if pb.Block.ParentID != currentBlockID(tx) {
+		build.Critical(errInvalidSuccessor)
 	}
 
 	// Create the bucket to hold all of the delayed siacoin outputs created by
@@ -156,12 +155,12 @@ func (cs *ConsensusSet) generateAndApplyDiff(tx *bolt.Tx, pb *processedBlock) er
 	// Validate and apply each transaction in the block. They cannot be
 	// validated all at once because some transactions may not be valid until
 	// previous transactions have been applied.
-	for _, txn := range pb.Block.Transactions {
+	for idx, txn := range pb.Block.Transactions {
 		err := validTransaction(tx, txn, types.TransactionValidationConstants{
 			BlockSizeLimit:         cs.chainCts.BlockSizeLimit,
 			ArbitraryDataSizeLimit: cs.chainCts.ArbitraryDataSizeLimit,
 			MinimumMinerFee:        cs.chainCts.MinimumTransactionFee,
-		}, pb.Height, pb.Block.Timestamp)
+		}, pb.Height, pb.Block.Timestamp, cs.isBlockCreatingTx(idx, pb.Block))
 		if err != nil {
 			cs.log.Printf("WARN: block %v cannot be applied: tx %v is invalid: %v",
 				pb.Block.ID(), txn.ID(), err)
@@ -199,4 +198,47 @@ func (cs *ConsensusSet) generateAndApplyDiff(tx *bolt.Tx, pb *processedBlock) er
 	}
 
 	return blockMap.Put(bid[:], siabin.Marshal(*pb))
+}
+
+// isBlockCreatingTx checks if a transaction at a given index in the block is considered to
+// be a block creating transaction within the block. A block creating transaction is a
+// transaction which respends a single blockstake output for the proof of blockstake protocol.
+// The blockstake input and output MUST be the only input and output in the transaction.
+// Furthermore, the blockstake input used in the transaction MUST spend the blockstake
+// output indicated in the POBSOutput field in the block header
+func (cs *ConsensusSet) isBlockCreatingTx(txIdx int, block types.Block) bool {
+
+	// First check if there is only 1 blockstake input and output
+
+	if len(block.Transactions[txIdx].BlockStakeInputs) != 1 {
+		return false
+	}
+
+	if len(block.Transactions[txIdx].BlockStakeOutputs) != 1 {
+		return false
+	}
+
+	if len(block.Transactions[txIdx].CoinInputs) != 0 {
+		return false
+	}
+
+	if len(block.Transactions[txIdx].CoinOutputs) != 0 {
+		return false
+	}
+
+	// this might be block creation transaction, so do a more expensive check to see
+	// if we indeed spend the output indicated in the block header
+	t, exists := cs.TransactionAtShortID(types.NewTransactionShortID(
+		block.Header().POBSOutput.BlockHeight, uint16(block.Header().POBSOutput.TransactionIndex)))
+	if !exists {
+		return false
+	}
+
+	if uint64(len(t.BlockStakeOutputs)) > block.Header().POBSOutput.OutputIndex &&
+		t.BlockStakeOutputID(block.Header().POBSOutput.OutputIndex) ==
+			block.Transactions[txIdx].BlockStakeInputs[0].ParentID {
+		return true
+	}
+
+	return false
 }

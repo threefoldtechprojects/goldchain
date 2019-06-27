@@ -4,11 +4,11 @@ import (
 	"errors"
 	"time"
 
+	bolt "github.com/rivine/bbolt"
 	"github.com/threefoldtech/rivine/build"
 	"github.com/threefoldtech/rivine/modules"
+	"github.com/threefoldtech/rivine/pkg/encoding/rivbin"
 	"github.com/threefoldtech/rivine/types"
-
-	"github.com/rivine/bbolt"
 )
 
 var (
@@ -135,8 +135,8 @@ func (cs *ConsensusSet) addBlockToTree(b types.Block) (ce changeEntry, err error
 	var nonExtending bool
 	err = cs.db.Update(func(tx *bolt.Tx) error {
 		pb, err := getBlockMap(tx, b.ParentID)
-		if build.DEBUG && err != nil {
-			panic(err)
+		if err != nil {
+			build.Critical(err)
 		}
 		currentNode := currentProcessedBlock(tx)
 		newNode := cs.newChild(tx, pb, b)
@@ -176,6 +176,37 @@ func (cs *ConsensusSet) addBlockToTree(b types.Block) (ce changeEntry, err error
 		if err != nil {
 			return err
 		}
+
+		// update consensus change id for all plugins
+		if len(cs.plugins) > 0 {
+			consensusChangeID := ce.ID()
+			for name := range cs.plugins {
+				rootbucket := tx.Bucket(BucketPlugins)
+				// get the metadata bucket from the rootbucket
+				metadataBucket := rootbucket.Bucket(bucketPluginsMetadata)
+				if metadataBucket == nil {
+					return ErrMissingMetadataBucket
+				}
+				// get the plugin metadata as-is
+				pluginMetadataBytes := metadataBucket.Get([]byte(name))
+				if len(pluginMetadataBytes) == 0 {
+					return ErrMissingPluginMetadata
+				}
+				var pluginMetadata pluginMetadata
+				err := rivbin.Unmarshal(pluginMetadataBytes, &pluginMetadata)
+				if err != nil {
+					return err
+				}
+
+				// save the new metadata
+				pluginMetadata.ConsensusChangeID = consensusChangeID
+				err = metadataBucket.Put([]byte(name), rivbin.Marshal(pluginMetadata))
+				if err != nil {
+					return err
+				}
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -258,8 +289,8 @@ func (cs *ConsensusSet) managedAcceptBlock(b types.Block) error {
 		return err
 	}
 	// If appliedBlocks is 0, revertedBlocks will also be 0.
-	if build.DEBUG && len(changeEntry.AppliedBlocks) == 0 && len(changeEntry.RevertedBlocks) != 0 {
-		panic("appliedBlocks and revertedBlocks are mismatched!")
+	if len(changeEntry.AppliedBlocks) == 0 && len(changeEntry.RevertedBlocks) != 0 {
+		build.Severe("appliedBlocks and revertedBlocks are mismatched!")
 	}
 	// Updates complete, demote the lock.
 	cs.mu.Demote()

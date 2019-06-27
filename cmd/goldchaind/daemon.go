@@ -13,6 +13,7 @@ import (
 	"github.com/nbh-digital/goldchain/pkg/config"
 
 	"github.com/julienschmidt/httprouter"
+	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/modules/blockcreator"
 	"github.com/threefoldtech/rivine/modules/consensus"
@@ -22,7 +23,6 @@ import (
 	"github.com/threefoldtech/rivine/modules/wallet"
 	rivineapi "github.com/threefoldtech/rivine/pkg/api"
 	"github.com/threefoldtech/rivine/pkg/daemon"
-	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
 )
 
 func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifierSet) error {
@@ -124,7 +124,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			printModuleIsLoading("transaction pool")
 			tpool, err = transactionpool.New(cs, g,
 				filepath.Join(cfg.RootPersistentDir, modules.TransactionPoolDir),
-				cfg.BlockchainInfo, networkCfg.Constants)
+				cfg.BlockchainInfo, networkCfg.Constants, cfg.VerboseLogging)
 			if err != nil {
 				servErrs <- err
 				cancel()
@@ -185,7 +185,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			printModuleIsLoading("explorer")
 			e, err = explorer.New(cs,
 				filepath.Join(cfg.RootPersistentDir, modules.ExplorerDir),
-				cfg.BlockchainInfo, networkCfg.Constants)
+				cfg.BlockchainInfo, networkCfg.Constants, cfg.VerboseLogging)
 			if err != nil {
 				servErrs <- err
 				cancel()

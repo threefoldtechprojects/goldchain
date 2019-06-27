@@ -6,10 +6,12 @@ package types
 // it is cryptographically unlikely that any two objects would share an id.
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"io"
 
+	"github.com/threefoldtech/rivine/build"
 	"github.com/threefoldtech/rivine/crypto"
 	"github.com/threefoldtech/rivine/pkg/encoding/rivbin"
 	"github.com/threefoldtech/rivine/pkg/encoding/siabin"
@@ -589,10 +591,10 @@ func (v TransactionVersion) IsValidTransactionVersion() error {
 // See the TransactionShortID type for more information.
 func NewTransactionShortID(height BlockHeight, txSequenceID uint16) TransactionShortID {
 	if (height & blockHeightOOBMask) > 0 {
-		panic("block height out of bounds")
+		build.Critical("block height out of bounds")
 	}
 	if (txSequenceID & txSeqIndexOOBMask) > 0 {
-		panic("transaction sequence ID out of bounds")
+		build.Critical("transaction sequence ID out of bounds")
 	}
 
 	return TransactionShortID(height<<txShortIDBlockHeightShift) |
@@ -795,4 +797,20 @@ func (bsoid BlockStakeOutputID) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON decodes the json hex string of the blockstake output id.
 func (bsoid *BlockStakeOutputID) UnmarshalJSON(b []byte) error {
 	return (*crypto.Hash)(bsoid).UnmarshalJSON(b)
+}
+
+// TransactionNonce is a nonce
+// used to ensure the uniqueness of an otherwise potentially non-unique Tx
+type TransactionNonce [TransactionNonceLength]byte
+
+// TransactionNonceLength defines the length of a TransactionNonce
+const TransactionNonceLength = 8
+
+// RandomTransactionNonce creates a random Transaction nonce
+func RandomTransactionNonce() (nonce TransactionNonce) {
+	for nonce == (TransactionNonce{}) {
+		// generate non-nil crypto-Random TransactionNonce
+		rand.Read(nonce[:])
+	}
+	return
 }

@@ -62,19 +62,6 @@
   revision = "19c3af6fd3cefb5dc9c05dfc84122e8f74f92927"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/rivine/rivine"
-  packages = [
-    "build",
-    "crypto",
-    "encoding",
-    "modules",
-    "pkg/api",
-    "types"
-  ]
-  revision = "31f4fe4a49ea9caa7c18960e4f4d4687ac231081"
-
-[[projects]]
   name = "github.com/rivine/smux"
   packages = ["."]
   revision = "e28719eede1ac5714cf0b06ba2f403125864ebe0"
@@ -83,20 +70,14 @@
 [[projects]]
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "ef82de70bb3f60c65fb8eebacbb2d122ef517385"
-  version = "v0.0.3"
+  revision = "f2b07da1e2c38d5f12845a4f607e2e1018cbb1f5"
+  version = "v0.0.5"
 
 [[projects]]
   name = "github.com/spf13/pflag"
   packages = ["."]
   revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
   version = "v1.0.3"
-
-[[projects]]
-  name = "github.com/threefoldfoundation/tfchain"
-  packages = ["pkg/config"]
-  revision = "d01ecd15fb1a5149b230e48af696081ce1afb24a"
-  version = "v1.1.1"
 
 [[projects]]
   branch = "master"
@@ -114,13 +95,14 @@
     "persist",
     "pkg/api",
     "pkg/cli",
+    "pkg/client",
     "pkg/daemon",
     "pkg/encoding/rivbin",
     "pkg/encoding/siabin",
     "sync",
     "types"
   ]
-  revision = "844293219f9bb22a85e2213dc79b59ce17aeea99"
+  revision = "99d9505f141c0c6692fc070f37196320bb3cc323"
 
 [[projects]]
   branch = "master"
@@ -160,7 +142,7 @@
     "pbkdf2",
     "twofish"
   ]
-  revision = "a1f597ede03a7bef967a422b5b3a5bd08805a01e"
+  revision = "cc06ce4a13d484c0101a9e92913248488a75786d"
 
 [[projects]]
   branch = "master"
@@ -170,7 +152,7 @@
     "html/atom",
     "html/charset"
   ]
-  revision = "9f648a60d9775ef5c977e7669d1673a7a67bef33"
+  revision = "3b0461eec859c4b73bb64fdc8285971fd33e3938"
 
 [[projects]]
   branch = "master"
@@ -179,7 +161,7 @@
     "cpu",
     "unix"
   ]
-  revision = "a2f829d7f35f2ed1c3520c553a6226495455cae0"
+  revision = "04f50cda93cbb67f2afa353c52f342100e80e625"
 
 [[projects]]
   name = "golang.org/x/text"
@@ -195,6 +177,8 @@
     "encoding/traditionalchinese",
     "encoding/unicode",
     "internal/gen",
+    "internal/language",
+    "internal/language/compact",
     "internal/tag",
     "internal/utf8internal",
     "language",
@@ -202,12 +186,12 @@
     "transform",
     "unicode/cldr"
   ]
-  revision = "f21a4dfb5e38f5895301dc265a8def02365cc3d0"
-  version = "v0.3.0"
+  revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
+  version = "v0.3.2"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "be693e25a9a11071a2f0ee8ba4a5e938aa820a595d31fa6eff3e8c5be0e2d9c4"
+  inputs-digest = "a6a29db6b1aa84c338c733c71b36ee38deba74b129360b22eb3ef47001ccf8d5"
   solver-name = "gps-cdcl"
   solver-version = 1

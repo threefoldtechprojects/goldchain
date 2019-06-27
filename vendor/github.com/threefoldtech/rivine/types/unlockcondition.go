@@ -173,6 +173,11 @@ type (
 		// BlockTime defines the time of the currently last registered block,
 		// the transaction belonged to.
 		BlockTime Timestamp
+		// IsBlockCreatingTx defines if a transaction is used for the sole purpose
+		// of creating a block. More specifically, a transaction is considered a
+		// block creating transaction if it only respends a blockstake output
+		// for the purpose of the proof of blockstake protocol
+		IsBlockCreatingTx bool
 	}
 
 	// FulfillmentSignContext is given as part of the sign call of an UnlockFullment,
@@ -657,9 +662,7 @@ func (n *NilFulfillment) IsStandardFulfillment(ValidationContext) error {
 
 // Marshal implements MarshalableUnlockFulfillment.Marshal
 func (n *NilFulfillment) Marshal(MarshalFunc) []byte {
-	if build.DEBUG {
-		panic(ErrNilFulfillmentType)
-	}
+	build.Severe(ErrNilFulfillmentType)
 	return nil // nothing to marshal
 }
 
@@ -1339,8 +1342,8 @@ var (
 // NewTimeLockCondition creates a new TimeLockCondition.
 // If no MarshalableUnlockCondition is given, the NilCondition is assumed.
 func NewTimeLockCondition(lockTime uint64, condition MarshalableUnlockCondition) *TimeLockCondition {
-	if build.DEBUG && lockTime == 0 {
-		panic("lock time is required")
+	if lockTime == 0 {
+		build.Severe("lock time is required")
 	}
 	if condition == nil {
 		condition = &NilCondition{}
@@ -1503,19 +1506,19 @@ func (tl *TimeLockCondition) UnmarshalJSON(b []byte) error {
 // using the given unlockhashes as a representation of the identities
 // who can unlock the output
 func NewMultiSignatureCondition(uhs UnlockHashSlice, minsigs uint64) *MultiSignatureCondition {
-	if build.DEBUG && minsigs == 0 {
-		panic("MultiSig outputs must require at least a single signature to unlock")
+	if minsigs == 0 {
+		build.Severe("MultiSig outputs must require at least a single signature to unlock")
 	}
-	if build.DEBUG && len(uhs) == 0 {
-		panic("MultiSig outputs must specify at least a single address which can sign it as an input")
+	if len(uhs) == 0 {
+		build.Severe("MultiSig outputs must specify at least a single address which can sign it as an input")
 	}
-	if build.DEBUG && uint64(len(uhs)) < minsigs {
-		panic("You can't create a multisig which requires more signatures to spent then there are addresses which can sign")
+	if uint64(len(uhs)) < minsigs {
+		build.Severe("You can't create a multisig which requires more signatures to spent then there are addresses which can sign")
 	}
 	if build.DEBUG {
 		for _, uh := range uhs {
 			if uh.Type != UnlockTypePubKey {
-				panic("Unlock hashes used in multisig condition must have the UnlockTypePubKey type")
+				build.Critical("Unlock hashes used in multisig condition must have the UnlockTypePubKey type")
 			}
 		}
 

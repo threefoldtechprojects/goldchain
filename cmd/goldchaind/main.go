@@ -5,10 +5,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/nbh-digital/goldchain/pkg/config"
 	"github.com/spf13/cobra"
 	"github.com/threefoldtech/rivine/pkg/cli"
 	"github.com/threefoldtech/rivine/pkg/daemon"
-	"github.com/nbh-digital/goldchain/pkg/config"
 )
 
 func main() {
@@ -33,14 +33,6 @@ func main() {
 	cmds.cfg.RegisterAsFlags(rootCommand.Flags())
 	// also add our modules as a flag
 	cmds.moduleSetFlag.RegisterFlag(rootCommand.Flags(), fmt.Sprintf("%s modules", os.Args[0]))
-
-	// custom flags
-	cli.NetAddressArrayFlagVar(
-		rootCommand.Flags(),
-		&cmds.cfg.BootstrapPeers,
-		"bootstrap-peers",
-		"overwrite the bootstrap peers to use, instead of using the default bootstrap peers",
-	)
 
 	// create the other commands
 	rootCommand.AddCommand(&cobra.Command{

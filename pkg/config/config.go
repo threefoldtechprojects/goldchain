@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	rawVersion = "v1.1.2-rc1"
-	// Version of the tfchain binaries.
+	rawVersion = "v0.1"
+	// Version of the goldchain binaries.
 	//
 	// Value is defined by a private build flag,
 	// or hardcoded to the latest released tag as fallback.
@@ -20,7 +20,7 @@ var (
 
 const (
 	// GolchainTokenUnit defines the unit of one Token.
-	GolchainTokenUnit = "AUR"
+	GolchainTokenUnit = "GFT"
 	// GoldchainTokenChainName defines the name of the chain.
 	GoldchainTokenChainName = "goldchain"
 )

@@ -12,3 +12,6 @@
 *.out
 cmd/goldchaind/goldchaind
 cmd/goldchainc/goldchainc
+
+# release dir
+release/

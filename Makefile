@@ -42,4 +42,24 @@ install-std:
 	go build -ldflags '$(ldflagsversion)' -o $(daemonbin) $(daemonpkgs)
 	go build -ldflags '$(ldflagsversion)' -o $(clientbin) $(clientpkgs)
 
-.PHONY: all test fmt vet install install-std
+# create an flist and upload it to the hub
+release-flist: archive get_hub_jwt
+	curl -b "active-user=goldchain; caddyoauth=$(HUB_JWT)" -F file=@./release/goldchain-latest.tar.gz "https://hub.grid.tf/api/flist/me/upload"
+
+# create release archives: linux, mac and flist
+archive: release-dir
+	./release.sh
+
+release-dir:
+	[ -d release ] || mkdir release
+
+get_hub_jwt: check-HUB_APP_ID check-HUB_APP_SECRET
+	$(eval HUB_JWT = $(shell curl -X POST "https://itsyou.online/v1/oauth/access_token?response_type=id_token&grant_type=client_credentials&client_id=$(HUB_APP_ID)&client_secret=$(HUB_APP_SECRET)&scope=user:memberof:goldchain"))
+
+check-%:
+	@ if [ "${${*}}" = "" ]; then \
+		echo "Required env var $* not present"; \
+		exit 1; \
+	fi
+
+.PHONY: all test fmt vet install install-std release-flist archive release-dir get_hub_jwt check-%

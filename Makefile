@@ -60,7 +60,10 @@ release-explorer: get_hub_jwt explorer
 
 # create an flist and upload it to the hub
 release-flist: archive get_hub_jwt
+	# Upload flist
 	curl -b "active-user=goldchain; caddyoauth=$(HUB_JWT)" -F file=@./release/goldchain-latest.tar.gz "https://hub.grid.tf/api/flist/me/upload"
+	# Merge with ubuntu
+	curl -b "active-user=goldchain; caddyoauth=$(HUB_JWT)" -X POST --data "[\"tf-bootable/ubuntu:16.04.flist\", \"goldchain/goldchain-latest.flist\"]" "https://hub.grid.tf/api/flist/me/merge/ubuntu-16.04-goldchain-latest.flist"
 
 # create release archives: linux, mac and flist
 archive: release-dir
@@ -78,4 +81,4 @@ check-%:
 		exit 1; \
 	fi
 
-.PHONY: all test fmt vet install install-std release-flist archive release-dir get_hub_jwt check-%
+.PHONY: all test fmt vet install install-std embed-explorer-version explorer release-explorer release-flist archive release-dir get_hub_jwt check-%

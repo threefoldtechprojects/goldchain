@@ -107,7 +107,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ddc265bd1e93f7cef05a0814d8820394e1f33a7aad2eb2ef1f321e88984714e4"
+  digest = "1:b4189e79c583e34fa62656d8ea7f2146f27127db104309fd50a9015780f41f81"
   name = "github.com/threefoldtech/rivine"
   packages = [
     "build",
@@ -116,6 +116,8 @@
     "extensions/authcointx/api",
     "extensions/authcointx/client",
     "extensions/minting",
+    "extensions/minting/api",
+    "extensions/minting/client",
     "modules",
     "modules/blockcreator",
     "modules/consensus",
@@ -134,7 +136,7 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "5951bd5cefd84b472b6c74a569db4c524b8ff7a3"
+  revision = "589b56da10998ecf1061e1ab1da7f88a49c2895c"
 
 [[projects]]
   branch = "master"
@@ -247,6 +249,8 @@
     "github.com/threefoldtech/rivine/extensions/authcointx/api",
     "github.com/threefoldtech/rivine/extensions/authcointx/client",
     "github.com/threefoldtech/rivine/extensions/minting",
+    "github.com/threefoldtech/rivine/extensions/minting/api",
+    "github.com/threefoldtech/rivine/extensions/minting/client",
     "github.com/threefoldtech/rivine/modules",
     "github.com/threefoldtech/rivine/modules/blockcreator",
     "github.com/threefoldtech/rivine/modules/consensus",

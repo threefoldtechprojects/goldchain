@@ -38,9 +38,8 @@ const (
 
 // Pass the condition the NewMintingPlugin
 plugin := minting.NewMintingPlugin(types.NewCondition(condition), minterDefinitionTxVersion, coinCreationTxVersion)
-//Create a channel to cancel the initial syncing if needed ( for example when the process is halted)
-cancel:= make(chan struct{})
-err = cs.RegisterPlugin("minting", plugin, cancel)
+
+err = cs.RegisterPlugin(context.BackGround(),"minting", plugin)
 if err != nil {
     return err
 }
@@ -61,19 +60,19 @@ import (
 // * rivinec explore mintcondition [height] [flags]
 mintingcli.CreateExploreCmd(cliClient)
 
-// Will create the createCoinTransaction and createMinterDefinitionTransaction command
-// * rivinec wallet create minterdefinitiontransaction
-// * rivinec wallet create coincreationtransaction
-mintingcli.CreateWalletCmds(cliClient)
-
-mintingReader := mintingcli.NewPluginExplorerClient(cliClient)
-
 // define the transaction versions for the 2 extra transactions possible
 const (
 	// can be any unique transaction version >= 128
 	minterDefinitionTxVersion = iota + 128
 	coinCreationTxVersion
 )
+
+// Will create the createCoinTransaction and createMinterDefinitionTransaction command
+// * rivinec wallet create minterdefinitiontransaction
+// * rivinec wallet create coincreationtransaction
+mintingcli.CreateWalletCmds(cliClient, minterDefinitionTxVersion, coinCreationTxVersion)
+
+mintingReader := mintingcli.NewPluginExplorerClient(cliClient)
 
 // Register the transaction types
 types.RegisterTransactionVersion(minterDefinitionTxVersion, minting.MinterDefinitionTransactionController{

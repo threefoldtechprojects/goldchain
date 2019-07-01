@@ -18,6 +18,8 @@ import (
 	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
 	"github.com/threefoldtech/rivine/extensions/authcointx"
 	authcointxapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
+	"github.com/threefoldtech/rivine/extensions/minting"
+	mintingapi "github.com/threefoldtech/rivine/extensions/minting/api"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/modules/blockcreator"
 	"github.com/threefoldtech/rivine/modules/consensus"
@@ -99,9 +101,15 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 					fmt.Println("Error during gateway shutdown:", err)
 				}
 			}()
-
 		}
-		var cs modules.ConsensusSet
+
+		var (
+			cs modules.ConsensusSet
+
+			// plugins
+			authCoinTxPlugin *authcointx.Plugin
+			mintingPlugin    *minting.Plugin
+		)
 		if moduleIdentifiers.Contains(daemon.ConsensusSetModule.Identifier()) {
 			printModuleIsLoading("consensus set")
 			cs, err = consensus.New(g, !cfg.NoBootstrap,
@@ -123,25 +131,34 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 
 			// register the auth coin tx plugin
 			// > NOTE: this also overwrites the standard tx controllers!!!!
-			plugin := authcointx.NewPlugin(
+			authCoinTxPlugin = authcointx.NewPlugin(
 				setupNetworkCfg.GenesisAuthCondition,
 				goldchaintypes.TransactionVersionAuthAddressUpdateTx,
 				goldchaintypes.TransactionVersionAuthConditionUpdateTx,
 			)
-			err = cs.RegisterPlugin("authcointx", plugin, ctx.Done())
+			err = cs.RegisterPlugin(ctx, "authcointx", authCoinTxPlugin)
 			if err != nil {
-				servErrs <- err
+				servErrs <- fmt.Errorf("failed to register the auth coin tx extension: %v", err)
 				cancel()
 				return
 			}
 			// add the HTTP handlers for the auth coin tx extension as well
-			authcointxapi.RegisterConsensusuthCoinHTTPHandlers(router, plugin)
-		}
+			authcointxapi.RegisterConsensusuthCoinHTTPHandlers(router, authCoinTxPlugin)
 
-		if err := registerMintingExtension(cs, setupNetworkCfg.GenesisMintCondition); err != nil {
-			servErrs <- fmt.Errorf("failed to register  the minting extension: %v", err)
-			cancel()
-			return
+			// register the minting extension plugin
+			mintingPlugin = minting.NewMintingPlugin(
+				setupNetworkCfg.GenesisMintCondition,
+				goldchaintypes.MinterDefinitionTxVersion,
+				goldchaintypes.CoinCreationTxVersion,
+			)
+			err = cs.RegisterPlugin(ctx, "minting", mintingPlugin)
+			if err != nil {
+				servErrs <- fmt.Errorf("failed to register the minting extension: %v", err)
+				cancel()
+				return
+			}
+			// add the HTTP handlers for the auth coin tx extension as well
+			mintingapi.RegisterConsensusMintingHTTPHandlers(router, mintingPlugin)
 		}
 
 		var tpool modules.TransactionPool
@@ -224,6 +241,10 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 					fmt.Println("Error during explorer shutdown:", err)
 				}
 			}()
+
+			// register extension HTTP handlers
+			authcointxapi.RegisterExplorerAuthCoinHTTPHandlers(router, authCoinTxPlugin)
+			mintingapi.RegisterExplorerMintingHTTPHandlers(router, mintingPlugin)
 		}
 
 		fmt.Println("Setting up root HTTP API handler...")

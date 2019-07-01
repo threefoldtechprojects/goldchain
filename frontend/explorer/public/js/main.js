@@ -247,7 +247,7 @@ function getBlockchainContext() {
 	};
 }
 
-function getCustomMinerPayoutSourceInfoArrayForTransaction(explorerTx) 
+function getCustomMinerPayoutSourceInfoArrayForTransaction(explorerTx) {
 	return [];
 }
 

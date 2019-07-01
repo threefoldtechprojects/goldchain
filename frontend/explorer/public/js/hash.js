@@ -4,17 +4,23 @@ var LockTimeMinTimestampValue = 500 * 1000 * 1000
 // the dom info in the form of a set of tables.
 function appendTransactionStatistics(infoBody, explorerTransaction, confirmed) {
 	switch (explorerTransaction.rawtransaction.version) {
-		case 0:
-			appendV0Transaction(infoBody, explorerTransaction, confirmed);
-			break;
 		case 1:
+			// standard coin transactions
 			appendV1Transaction(infoBody, explorerTransaction, confirmed);
 			break;
-		case 128:
+		// minting transactions
+		case 128: // minter definition
 			appendV128Transaction(infoBody, explorerTransaction, confirmed);
 			break;
-		case 129:
+		case 129: // coin creation
 			appendV129Transaction(infoBody, explorerTransaction, confirmed);
+			break;
+		// auth coin transactions
+		case 176: // address update
+			appendV176Transaction(infoBody, explorerTransaction, confirmed);
+			break;
+		case 177: // condition update
+			appendV177Transaction(infoBody, explorerTransaction, confirmed);
 			break;
 		default:
 			appendUnknownTransaction(infoBody, explorerTransaction, confirmed)
@@ -159,7 +165,7 @@ function appendV0Transaction(infoBody, explorerTransaction, confirmed) {
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
 		appendStatTableTitle(infoBody, 'Arbitrary Data');
 		var table = createStatsTable();
-		appendStat(table, 'Base64-decoded Data', b64DecodeUnicode(explorerTransaction.rawtransaction.data.arbitrarydata));
+		appendStat(table, 'Base64-encoded Data', explorerTransaction.rawtransaction.data.arbitrarydata);
 		infoBody.appendChild(table);
 	}
 	if (confirmed) {
@@ -315,7 +321,7 @@ function appendV1Transaction(infoBody, explorerTransaction, confirmed) {
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
 		appendStatTableTitle(infoBody, 'Arbitrary Data');
 		var table = createStatsTable();
-		appendStat(table, 'Base64-decoded Data', b64DecodeUnicode(explorerTransaction.rawtransaction.data.arbitrarydata));
+		appendStat(table, 'Base64-encoded Data', explorerTransaction.rawtransaction.data.arbitrarydata);
 		infoBody.appendChild(table);
 	}
 	if (confirmed) {
@@ -405,7 +411,7 @@ function appendV128Transaction(infoBody, explorerTransaction, confirmed) {
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
 		appendStatTableTitle(infoBody, 'Arbitrary Data');
 		var table = createStatsTable();
-		appendStat(table, 'Base64-decoded Data', b64DecodeUnicode(explorerTransaction.rawtransaction.data.arbitrarydata));
+		appendStat(table, 'Base64-encoded Data', explorerTransaction.rawtransaction.data.arbitrarydata);
 		infoBody.appendChild(table);
 	}
 
@@ -502,7 +508,7 @@ function appendV129Transaction(infoBody, explorerTransaction, confirmed) {
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
 		appendStatTableTitle(infoBody, 'Arbitrary Data');
 		var table = createStatsTable();
-		appendStat(table, 'Base64-decoded Data', b64DecodeUnicode(explorerTransaction.rawtransaction.data.arbitrarydata));
+		appendStat(table, 'Base64-encoded Data', explorerTransaction.rawtransaction.data.arbitrarydata);
 		infoBody.appendChild(table);
 	}
 
@@ -521,6 +527,156 @@ function appendV129Transaction(infoBody, explorerTransaction, confirmed) {
 				infoBody.appendChild(table);
 			}
 		}
+	}
+}
+
+function appendV176Transaction(infoBody, explorerTransaction, confirmed) {
+	var ctx = getBlockchainContext();
+
+	var table = createStatsTable();
+	appendStatHeader(table, 'Address Authentication Update Transaction Statistics');
+	if (confirmed) {
+		var doms = appendStat(table, 'Block Height', '');
+		linkHeight(doms[2], explorerTransaction.height);
+		doms = appendStat(table, 'Block ID', '');
+		linkHash(doms[2], explorerTransaction.parent);
+		appendStat(table, 'Confirmations', ctx.height - explorerTransaction.height + 1);
+	} else {
+		doms = appendStat(table, 'Block Height', 'unconfirmed');
+	}
+	doms = appendStat(table, 'ID', '');
+	linkHash(doms[2], explorerTransaction.id);
+	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
+		appendStat(table, 'Arbitrary Data Byte Count',  b64DecodeUnicode(explorerTransaction.rawtransaction.data.arbitrarydata).length);
+	}
+	infoBody.appendChild(table);
+
+	appendStatTableTitle(infoBody, 'Coin Auth Fulfillment');
+	switch (explorerTransaction.rawtransaction.data.authfulfillment.type) {
+		case 0:
+			break;
+		case 1:
+			f = addV1Fulfillment;
+			break;
+		case 2:
+			f = addV2Fulfillment;
+			break;
+		case 3:
+			f = addV3Fulfillment;
+			break;
+		default:
+			f = addUnknownFulfillment;
+	}
+	var table = createStatsTable();
+	f(table, explorerTransaction.rawtransaction.data.authfulfillment);
+	infoBody.appendChild(table);
+
+	appendStatTableTitle(infoBody, 'Authentication Update');
+	table = createStatsTable();
+	infoBody.appendChild(table);
+	if (explorerTransaction.rawtransaction.data.authaddresses != null
+		&& explorerTransaction.rawtransaction.data.authaddresses.length > 0) {
+		var authAddresses = appendStat(table, 'Authorized Addresses', '');
+		for (var i = 0; i < explorerTransaction.rawtransaction.data.authaddresses.length; i++) {
+			var address = explorerTransaction.rawtransaction.data.authaddresses[i];
+			linkHash(authAddresses[2], address);
+			if (i < explorerTransaction.rawtransaction.data.authaddresses.length-1) {
+				authAddresses[2].appendChild(document.createTextNode(', '));
+			}
+		}
+	}
+
+	if (explorerTransaction.rawtransaction.data.deauthaddresses != null
+		&& explorerTransaction.rawtransaction.data.deauthaddresses.length > 0) {
+		var deauthaddresses = appendStat(table, 'Deauthorized Addresses', '');
+		for (var i = 0; i < explorerTransaction.rawtransaction.data.deauthaddresses.length; i++) {
+			var address = explorerTransaction.rawtransaction.data.deauthaddresses[i];
+			linkHash(deauthaddresses[2], address);
+			if (i < explorerTransaction.rawtransaction.data.deauthaddresses.length-1) {
+				deauthaddresses[2].appendChild(document.createTextNode(', '));
+			}
+		}
+	}
+
+	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
+		appendStatTableTitle(infoBody, 'Arbitrary Data');
+		var table = createStatsTable();
+		appendStat(table, 'Base64-encoded Data', explorerTransaction.rawtransaction.data.arbitrarydata);
+		infoBody.appendChild(table);
+	}
+}
+
+function appendV177Transaction(infoBody, explorerTransaction, confirmed) {
+	var ctx = getBlockchainContext();
+
+	var table = createStatsTable();
+	appendStatHeader(table, 'Auth Condition Update Transaction Statistics');
+	if (confirmed) {
+		var doms = appendStat(table, 'Block Height', '');
+		linkHeight(doms[2], explorerTransaction.height);
+		doms = appendStat(table, 'Block ID', '');
+		linkHash(doms[2], explorerTransaction.parent);
+		appendStat(table, 'Confirmations', ctx.height - explorerTransaction.height + 1);
+	} else {
+		doms = appendStat(table, 'Block Height', 'unconfirmed');
+	}
+	doms = appendStat(table, 'ID', '');
+	linkHash(doms[2], explorerTransaction.id);
+	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
+		appendStat(table, 'Arbitrary Data Byte Count',  b64DecodeUnicode(explorerTransaction.rawtransaction.data.arbitrarydata).length);
+	}
+	infoBody.appendChild(table);
+
+	appendStatTableTitle(infoBody, 'Coin Auth Fulfillment');
+	switch (explorerTransaction.rawtransaction.data.authfulfillment.type) {
+		case 0:
+			break;
+		case 1:
+			f = addV1Fulfillment;
+			break;
+		case 2:
+			f = addV2Fulfillment;
+			break;
+		case 3:
+			f = addV3Fulfillment;
+			break;
+		default:
+			f = addUnknownFulfillment;
+	}
+	var table = createStatsTable();
+	f(table, explorerTransaction.rawtransaction.data.authfulfillment);
+	infoBody.appendChild(table);
+
+	appendStatTableTitle(infoBody, 'New Auth Condition');
+	switch (explorerTransaction.rawtransaction.data.authcondition.type) {
+		case undefined:
+		case 0:
+			f = addVNilCondition;
+			break;
+		case 1:
+			f = addV1Condition;
+			break;
+		case 2:
+			f = addV2Condition;
+			break;
+		case 3:
+			f = addV3Condition;
+			break;
+		case 4:
+			f = addV4Condition;
+			break;
+		default:
+			f = addUnknownCondition;
+	}
+	var table = createStatsTable();
+	f(ctx, table, explorerTransaction.rawtransaction.data.authcondition.data, null);
+	infoBody.appendChild(table);
+
+	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
+		appendStatTableTitle(infoBody, 'Arbitrary Data');
+		var table = createStatsTable();
+		appendStat(table, 'Base64-encoded Data', explorerTransaction.rawtransaction.data.arbitrarydata);
+		infoBody.appendChild(table);
 	}
 }
 

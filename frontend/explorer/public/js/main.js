@@ -392,6 +392,11 @@ function txVersionName(version) {
 		case 129:
 			return "Coin Creation";
 
+		case 176:
+			return "Address Authentication Update";
+		case 177:
+			return "Auth Condition Update";
+
 		default:
 			return "Unknown";
 	}

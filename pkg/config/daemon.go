@@ -4,7 +4,7 @@ import (
 	"github.com/threefoldtech/rivine/types"
 )
 
-// DaemonNetworkConfig defines network-specific tfchain constants.
+// DaemonNetworkConfig defines network-specific constants.
 type DaemonNetworkConfig struct {
 	FoundationPoolAddress types.UnlockHash
 }

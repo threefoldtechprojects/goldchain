@@ -3,115 +3,89 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c4c554d10faa430302efdac60563a4fff02120eca59d18a66e26991682bbc09e"
   name = "github.com/NebulousLabs/demotemutex"
   packages = ["."]
-  pruneopts = "UT"
   revision = "7a9e348a768ee181c876ca60334754e49dc7791b"
 
 [[projects]]
   branch = "master"
-  digest = "1:9dc9f69bdde88ec0dda4e7f6c4e4ba03ed29ab0244e1bc5b127dcece653dc194"
   name = "github.com/NebulousLabs/errors"
   packages = ["."]
-  pruneopts = "UT"
   revision = "9f787ce8f69e09481712408509caaa777701bc87"
 
 [[projects]]
   branch = "master"
-  digest = "1:dc9129ec391d300898c27fd0a7631dcf235256144285209ea594db6f434d8695"
   name = "github.com/NebulousLabs/fastrand"
   packages = ["."]
-  pruneopts = "UT"
   revision = "6fb6489aac4eae79e3f8112c21708191a7a90dd7"
 
 [[projects]]
   branch = "master"
-  digest = "1:9453a78d99a84a2bbfee0048e92f068056fd6489e98f6b92aaa574d63ff365c0"
   name = "github.com/NebulousLabs/go-upnp"
   packages = ["."]
-  pruneopts = "UT"
   revision = "b32978b8ccbffe222d6f37a980e795074ac2ba74"
 
 [[projects]]
   branch = "master"
-  digest = "1:ad89269c9e85de965f1b6dcef56bad3e6d3fd4fa03556151e943d078ad229f0b"
   name = "github.com/NebulousLabs/merkletree"
   packages = ["."]
-  pruneopts = "UT"
   revision = "08d5d54b07f5e86a27f2d7431d0bc0300f5a9328"
 
 [[projects]]
-  branch = "master"
-  digest = "1:1343a2963481a305ca4d051e84bc2abd16b601ee22ed324f8d605de1adb291b0"
   name = "github.com/bgentry/speakeasy"
   packages = ["."]
-  pruneopts = "UT"
   revision = "4aabc24848ce5fd31929f7d1e4ea74d3709c14cd"
+  version = "v0.1.0"
 
 [[projects]]
-  digest = "1:870d441fe217b8e689d7949fef6e43efbc787e50f200cb1e70dbca9204a1d6be"
   name = "github.com/inconshreveable/mousetrap"
   packages = ["."]
-  pruneopts = "UT"
   revision = "76626ae9c91c4f2a10f34cad8ce83ea42c93bb75"
   version = "v1.0"
 
 [[projects]]
-  digest = "1:f97285a3b0a496dcf8801072622230d513f69175665d94de60eb042d03387f6c"
   name = "github.com/julienschmidt/httprouter"
   packages = ["."]
-  pruneopts = "UT"
   revision = "348b672cd90d8190f8240323e372ecd1e66b59dc"
   version = "v1.2.0"
 
 [[projects]]
-  digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
   name = "github.com/pkg/errors"
   packages = ["."]
-  pruneopts = "UT"
   revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
   version = "v0.8.1"
 
 [[projects]]
   branch = "master"
-  digest = "1:29390cd90266e2b4c714cfe135842e20760c4292b7baf84db9fd0b50655d367a"
   name = "github.com/rivine/bbolt"
   packages = ["."]
-  pruneopts = "UT"
   revision = "19c3af6fd3cefb5dc9c05dfc84122e8f74f92927"
 
 [[projects]]
-  digest = "1:727749ee690197b064e9995ad9c4789c32f94de2b5a1557117dc43eaa001acf8"
   name = "github.com/rivine/smux"
   packages = ["."]
-  pruneopts = "UT"
   revision = "e28719eede1ac5714cf0b06ba2f403125864ebe0"
   version = "v1.0.7"
 
 [[projects]]
-  digest = "1:e096613fb7cf34743d49af87d197663cfccd61876e2219853005a57baedfa562"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  pruneopts = "UT"
   revision = "f2b07da1e2c38d5f12845a4f607e2e1018cbb1f5"
   version = "v0.0.5"
 
 [[projects]]
-  digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
   name = "github.com/spf13/pflag"
   packages = ["."]
-  pruneopts = "UT"
   revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
   version = "v1.0.3"
 
 [[projects]]
   branch = "master"
-  digest = "1:f40191037b773cda30c9b42f410f0b90a3f59c98e82f7877a3ecdffcc1cdbc14"
   name = "github.com/threefoldtech/rivine"
   packages = [
     "build",
     "crypto",
+    "extensions/minting",
     "modules",
     "modules/blockcreator",
     "modules/consensus",
@@ -127,33 +101,27 @@
     "pkg/encoding/rivbin",
     "pkg/encoding/siabin",
     "sync",
-    "types",
+    "types"
   ]
-  pruneopts = "UT"
-  revision = "38d68e146e9c56f7ea1f2a1d52c0a84a5453f6d0"
+  revision = "5951bd5cefd84b472b6c74a569db4c524b8ff7a3"
 
 [[projects]]
   branch = "master"
-  digest = "1:6bae001f7c4cddc9ebf2b47bd5ff1bd3978a84b422c468d6037dad284c8c8e9d"
   name = "github.com/tyler-smith/go-bip39"
   packages = [
     ".",
-    "wordlists",
+    "wordlists"
   ]
-  pruneopts = "UT"
   revision = "dbb3b84ba2ef14e894f5e33d6c6e43641e665738"
 
 [[projects]]
   branch = "master"
-  digest = "1:e7b091967bad5c6d958dae84215f073654e66c742fb8473c0c97ed9b18b9af09"
   name = "gitlab.com/NebulousLabs/fastrand"
   packages = ["."]
-  pruneopts = "UT"
   revision = "603482d69e405db4890e654c9807b4c772e86c81"
 
 [[projects]]
   branch = "master"
-  digest = "1:a49b61a99b8850e948daf6b21969697c90263860eefdb63fcd873598d0311ddc"
   name = "gitlab.com/NebulousLabs/go-upnp"
   packages = [
     "goupnp",
@@ -161,50 +129,42 @@
     "goupnp/httpu",
     "goupnp/scpd",
     "goupnp/soap",
-    "goupnp/ssdp",
+    "goupnp/ssdp"
   ]
-  pruneopts = "UT"
   revision = "3a71999ed0d393fba27f9c9b54f25a0943af97af"
 
 [[projects]]
   branch = "master"
-  digest = "1:c1eeab439426bd8342334f38761647e35cdb913072b34da84040d5217ec498d4"
   name = "golang.org/x/crypto"
   packages = [
     "blake2b",
     "ed25519",
     "ed25519/internal/edwards25519",
     "pbkdf2",
-    "twofish",
+    "twofish"
   ]
-  pruneopts = "UT"
   revision = "cc06ce4a13d484c0101a9e92913248488a75786d"
 
 [[projects]]
   branch = "master"
-  digest = "1:a167b5c532f3245f5a147ade26185f16d6ee8f8d3f6c9846f447e9d8b9705505"
   name = "golang.org/x/net"
   packages = [
     "html",
     "html/atom",
-    "html/charset",
+    "html/charset"
   ]
-  pruneopts = "UT"
-  revision = "3b0461eec859c4b73bb64fdc8285971fd33e3938"
+  revision = "da137c7871d730100384dbcf36e6f8fa493aef5b"
 
 [[projects]]
   branch = "master"
-  digest = "1:6f7b102dfe61016b45aa051b96413e36cc2eff446b61249fdf723dd8e24d308b"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
-    "unix",
+    "unix"
   ]
-  pruneopts = "UT"
   revision = "04f50cda93cbb67f2afa353c52f342100e80e625"
 
 [[projects]]
-  digest = "1:8a0baffd5559acaa560f854d7d525c02f4fec2d4f8a214398556fb661a10f6e0"
   name = "golang.org/x/text"
   packages = [
     "encoding",
@@ -225,32 +185,14 @@
     "language",
     "runes",
     "transform",
-    "unicode/cldr",
+    "unicode/cldr"
   ]
-  pruneopts = "UT"
   revision = "342b2e1fbaa52c93f31447ad2c6abc048c63e475"
   version = "v0.3.2"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  input-imports = [
-    "github.com/bgentry/speakeasy",
-    "github.com/julienschmidt/httprouter",
-    "github.com/spf13/cobra",
-    "github.com/threefoldtech/rivine/build",
-    "github.com/threefoldtech/rivine/modules",
-    "github.com/threefoldtech/rivine/modules/blockcreator",
-    "github.com/threefoldtech/rivine/modules/consensus",
-    "github.com/threefoldtech/rivine/modules/explorer",
-    "github.com/threefoldtech/rivine/modules/gateway",
-    "github.com/threefoldtech/rivine/modules/transactionpool",
-    "github.com/threefoldtech/rivine/modules/wallet",
-    "github.com/threefoldtech/rivine/pkg/api",
-    "github.com/threefoldtech/rivine/pkg/cli",
-    "github.com/threefoldtech/rivine/pkg/client",
-    "github.com/threefoldtech/rivine/pkg/daemon",
-    "github.com/threefoldtech/rivine/types",
-  ]
+  inputs-digest = "11d34a881da1b66db446b7b8bfd74e2e9436e895a2201c77abe2045017b5915c"
   solver-name = "gps-cdcl"
   solver-version = 1

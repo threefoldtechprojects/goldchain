@@ -8,7 +8,6 @@ import (
 	"github.com/threefoldtech/rivine/pkg/daemon"
 
 	"github.com/nbh-digital/goldchain/pkg/config"
-	"github.com/nbh-digital/goldchain/pkg/types"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/pkg/client"
 )
@@ -20,8 +19,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	// used for the goldchain-specific controllers
 
 	// register goldchain-specific commands
 
@@ -37,11 +34,6 @@ func main() {
 
 		switch cfg.NetworkName {
 		case config.NetworkNameStandard:
-			networkConfig := config.GetStandardDaemonNetworkConfig()
-
-			// Register the transaction controllers for all transaction versions
-			// supported on the standard network
-			types.RegisterTransactionTypesForStandardNetwork(cfg.CurrencyUnits.OneCoin, networkConfig)
 
 			// overwrite standard network genesis block stamp,
 			// as the genesis block is way earlier than the actual first block,
@@ -49,21 +41,11 @@ func main() {
 			cfg.GenesisBlockTimestamp = 1524168391 // timestamp of (standard) block #1
 
 		case config.NetworkNameTest:
-			networkConfig := config.GetTestnetDaemonNetworkConfig()
-
-			// Register the transaction controllers for all transaction versions
-			// supported on the test network
-			types.RegisterTransactionTypesForTestNetwork(cfg.CurrencyUnits.OneCoin, networkConfig)
 
 			// seems like testnet timestamp wasn't updated last time it was reset
 			cfg.GenesisBlockTimestamp = 1522792547 // timestamp of (testnet) block #1
 
 		case config.NetworkNameDev:
-			networkConfig := config.GetDevnetDaemonNetworkConfig()
-
-			// Register the transaction controllers for all transaction versions
-			// supported on the dev network
-			types.RegisterTransactionTypesForDevNetwork(cfg.CurrencyUnits.OneCoin, networkConfig)
 
 		default:
 			return nil, fmt.Errorf("Network name %q not recognized", cfg.NetworkName)

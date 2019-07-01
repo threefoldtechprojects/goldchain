@@ -13,7 +13,6 @@ import (
 	"github.com/nbh-digital/goldchain/pkg/config"
 
 	"github.com/julienschmidt/httprouter"
-	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/modules/blockcreator"
 	"github.com/threefoldtech/rivine/modules/consensus"
@@ -50,6 +49,11 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 		servErrs <- srv.Serve()
 	}()
 
+	err = setupNetwork(&cfg)
+	if err != nil {
+		servErrs <- fmt.Errorf("failed to setup network config: %v", err)
+		return err
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// load all modules
@@ -64,14 +68,9 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 		// create and validate network config, and the transactionDB as well
 		// txdb is on index 0, as it is not manually loaded
 		printModuleIsLoading("(auto) transaction db")
-		networkCfg, err := setupNetwork(cfg)
-		if err != nil {
-			servErrs <- fmt.Errorf("failed to create network config: %v", err)
-			cancel()
-			return
-		}
-		err = networkCfg.Constants.Validate()
-		if err != nil {
+
+		networkCfg := cfg.NetworkConfig
+		if err := networkCfg.Constants.Validate(); err != nil {
 			servErrs <- fmt.Errorf("failed to validate network config: %v", err)
 			cancel()
 			return
@@ -119,6 +118,13 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				}
 			}()
 		}
+
+		if err := registerMintingExtension(cs, cfg.GenesisMintCondition); err != nil {
+			servErrs <- fmt.Errorf("failed to register  the minting extension: %v", err)
+			cancel()
+			return
+		}
+
 		var tpool modules.TransactionPool
 		if moduleIdentifiers.Contains(daemon.TransactionPoolModule.Identifier()) {
 			printModuleIsLoading("transaction pool")
@@ -270,64 +276,47 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 // it also ensures that features added during the lifetime of the blockchain,
 // only get activated on a certain block height, giving everyone sufficient time to upgrade should such features be introduced,
 // it also creates the correct modules based on the given chain.
-func setupNetwork(cfg ExtendedDaemonConfig) (daemon.NetworkConfig, error) {
+func setupNetwork(cfg *ExtendedDaemonConfig) error {
 	// return the network configuration, based on the network name,
 	// which includes the genesis block as well as the bootstrap peers
 	switch cfg.BlockchainInfo.NetworkName {
 	case config.NetworkNameStandard:
 
 		constants := config.GetStandardnetGenesis()
-		networkConfig := config.GetStandardDaemonNetworkConfig()
 
-		// Register the transaction controllers for all transaction versions
-		// supported on the standard network
-		goldchaintypes.RegisterTransactionTypesForStandardNetwork(constants.CurrencyUnits.OneCoin, networkConfig)
-
-		cfg.BootstrapPeers = config.GetStandardnetBootstrapPeers()
-
-		// return the standard genesis block and bootstrap peers
-		return daemon.NetworkConfig{
+		cfg.GenesisMintCondition = config.GetStandardGenesisMintCondition()
+		cfg.NetworkConfig = daemon.NetworkConfig{
 			Constants:      constants,
-			BootstrapPeers: cfg.BootstrapPeers,
-		}, nil
+			BootstrapPeers: config.GetStandardnetBootstrapPeers(),
+		}
+		return nil
 
 	case config.NetworkNameTest:
 
 		constants := config.GetTestnetGenesis()
-		networkConfig := config.GetTestnetDaemonNetworkConfig()
 
-		// Register the transaction controllers for all transaction versions
-		// supported on the test network
-		goldchaintypes.RegisterTransactionTypesForTestNetwork(constants.CurrencyUnits.OneCoin, networkConfig)
-
+		cfg.GenesisMintCondition = config.GetTestnetGenesisMintCondition()
 		cfg.BootstrapPeers = config.GetTestnetBootstrapPeers()
-
-		// return the testnet genesis block and bootstrap peers
-		return daemon.NetworkConfig{
+		cfg.NetworkConfig = daemon.NetworkConfig{
 			Constants:      constants,
 			BootstrapPeers: cfg.BootstrapPeers,
-		}, nil
+		}
+		return nil
 
 	case config.NetworkNameDev:
 
 		constants := config.GetDevnetGenesis()
-		networkConfig := config.GetDevnetDaemonNetworkConfig()
-
-		// Register the transaction controllers for all transaction versions
-		// supported on the dev network
-		goldchaintypes.RegisterTransactionTypesForDevNetwork(constants.CurrencyUnits.OneCoin, networkConfig)
-
-		cfg.BootstrapPeers = config.GetDevnetBootstrapPeers()
-
-		// return the devnet genesis block and bootstrap peers
-		return daemon.NetworkConfig{
+		cfg.GenesisMintCondition = config.GetDevnetGenesisMintCondition()
+		cfg.NetworkConfig = daemon.NetworkConfig{
 			Constants:      constants,
 			BootstrapPeers: cfg.BootstrapPeers,
-		}, nil
+		}
+
+		return nil
 
 	default:
 		// network isn't recognised
-		return daemon.NetworkConfig{}, fmt.Errorf(
+		return fmt.Errorf(
 			"Netork name %q not recognized", cfg.BlockchainInfo.NetworkName)
 	}
 }

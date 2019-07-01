@@ -263,11 +263,11 @@ func GetTestnetGenesisAuthCoinCondition() types.UnlockConditionProxy {
 // GetTestnetBootstrapPeers sets the testnet bootstrap node addresses
 func GetTestnetBootstrapPeers() []modules.NetAddress {
 	return []modules.NetAddress{
-		"bootstrap1.testnet.goldtoken.bnh.com:23112",
-		"bootstrap2.testnet.goldtoken.bnh.com:23112",
-		"bootstrap3.testnet.goldtoken.bnh.com:23112",
-		"bootstrap4.testnet.goldtoken.bnh.com:24112",
-		"bootstrap5.testnet.goldtoken.bnh.com:23112",
+		"bootstrap1.testnet.nbh-digital.com:23112",
+		"bootstrap2.testnet.nbh-digital.com:23112",
+		"bootstrap3.testnet.nbh-digital.com:23112",
+		"bootstrap4.testnet.nbh-digital.com:24112",
+		"bootstrap5.testnet.nbh-digital.com:23112",
 	}
 }
 

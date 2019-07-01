@@ -22,7 +22,6 @@ func main() {
 
 	// create the root command and add the flags to the root command
 	rootCommand := &cobra.Command{
-
 		Use: os.Args[0],
 		Short: strings.Title(cmds.cfg.BlockchainInfo.Name) + " Daemon v" +
 			cmds.cfg.BlockchainInfo.ChainVersion.String(),

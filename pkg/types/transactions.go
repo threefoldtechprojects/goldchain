@@ -6,3 +6,9 @@ const (
 	//CoinCreationTxVersion is the transaction version for the coin creation transaction
 	CoinCreationTxVersion
 )
+
+// Auth Coin Tx Extension Transaction Versions
+const (
+	TransactionVersionAuthAddressUpdateTx = iota + 176
+	TransactionVersionAuthConditionUpdateTx
+)

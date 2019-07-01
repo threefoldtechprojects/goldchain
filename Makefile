@@ -1,7 +1,7 @@
 all: install
 
-daemonpkgs = ./cmd/goldchainc
-clientpkgs = ./cmd/goldchaind
+daemonpkgs = ./cmd/goldchaind
+clientpkgs = ./cmd/goldchainc
 pkgs = $(daemonpkgs) $(clientpkgs)
 
 version = $(shell git describe --abbrev=0 || echo 'v0.1')

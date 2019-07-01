@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,8 +12,12 @@ import (
 	"time"
 
 	"github.com/nbh-digital/goldchain/pkg/config"
+	"github.com/threefoldtech/rivine/types"
 
 	"github.com/julienschmidt/httprouter"
+	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
+	"github.com/threefoldtech/rivine/extensions/authcointx"
+	authcointxapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/modules/blockcreator"
 	"github.com/threefoldtech/rivine/modules/consensus"
@@ -49,11 +54,6 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 		servErrs <- srv.Serve()
 	}()
 
-	err = setupNetwork(&cfg)
-	if err != nil {
-		servErrs <- fmt.Errorf("failed to setup network config: %v", err)
-		return err
-	}
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// load all modules
@@ -65,12 +65,15 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 		// router to register all endpoints to
 		router := httprouter.New()
 
-		// create and validate network config, and the transactionDB as well
-		// txdb is on index 0, as it is not manually loaded
-		printModuleIsLoading("(auto) transaction db")
-
-		networkCfg := cfg.NetworkConfig
-		if err := networkCfg.Constants.Validate(); err != nil {
+		setupNetworkCfg, err := setupNetwork(cfg)
+		if err != nil {
+			servErrs <- fmt.Errorf("failed to create network config: %v", err)
+			cancel()
+			return
+		}
+		networkCfg := setupNetworkCfg.NetworkConfig
+		err = networkCfg.Constants.Validate()
+		if err != nil {
 			servErrs <- fmt.Errorf("failed to validate network config: %v", err)
 			cancel()
 			return
@@ -117,9 +120,25 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 					fmt.Println("Error during consensus set shutdown:", err)
 				}
 			}()
+
+			// register the auth coin tx plugin
+			// > NOTE: this also overwrites the standard tx controllers!!!!
+			plugin := authcointx.NewPlugin(
+				setupNetworkCfg.GenesisAuthCondition,
+				goldchaintypes.TransactionVersionAuthAddressUpdateTx,
+				goldchaintypes.TransactionVersionAuthConditionUpdateTx,
+			)
+			err = cs.RegisterPlugin("authcointx", plugin, ctx.Done())
+			if err != nil {
+				servErrs <- err
+				cancel()
+				return
+			}
+			// add the HTTP handlers for the auth coin tx extension as well
+			authcointxapi.RegisterConsensusuthCoinHTTPHandlers(router, plugin)
 		}
 
-		if err := registerMintingExtension(cs, cfg.GenesisMintCondition); err != nil {
+		if err := registerMintingExtension(cs, setupNetworkCfg.GenesisMintCondition); err != nil {
 			servErrs <- fmt.Errorf("failed to register  the minting extension: %v", err)
 			cancel()
 			return
@@ -272,51 +291,77 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 	return <-servErrs
 }
 
+type setupNetworkConfig struct {
+	NetworkConfig        daemon.NetworkConfig
+	GenesisMintCondition types.UnlockConditionProxy
+	GenesisAuthCondition types.UnlockConditionProxy
+}
+
 // setupNetwork injects the correct chain constants and genesis nodes based on the chosen network,
 // it also ensures that features added during the lifetime of the blockchain,
 // only get activated on a certain block height, giving everyone sufficient time to upgrade should such features be introduced,
 // it also creates the correct modules based on the given chain.
-func setupNetwork(cfg *ExtendedDaemonConfig) error {
+func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 	// return the network configuration, based on the network name,
 	// which includes the genesis block as well as the bootstrap peers
 	switch cfg.BlockchainInfo.NetworkName {
 	case config.NetworkNameStandard:
+		return setupNetworkConfig{}, errors.New("standard net is disabled for goldchain, it is not ready for production") // TODO: enable again
 
-		constants := config.GetStandardnetGenesis()
+		// constants := config.GetStandardnetGenesis()
+		// networkConfig := config.GetStandardDaemonNetworkConfig()
+		// genesisAuthCondition := config.GetStandardnetGenesisAuthCoinCondition()
 
-		cfg.GenesisMintCondition = config.GetStandardGenesisMintCondition()
-		cfg.NetworkConfig = daemon.NetworkConfig{
-			Constants:      constants,
-			BootstrapPeers: config.GetStandardnetBootstrapPeers(),
-		}
-		return nil
+		// // Register the transaction controllers for all transaction versions
+		// // supported on the standard network
+		// goldchaintypes.RegisterTransactionTypesForStandardNetwork(constants.CurrencyUnits.OneCoin, networkConfig)
+
+		// cfg.BootstrapPeers = config.GetStandardnetBootstrapPeers()
+
+		// // return the standard genesis block and bootstrap peers
+		// return setupNetworkConfig{
+		// 	NetworkConfig: daemon.NetworkConfig{
+		// 		Constants:      constants,
+		// 		BootstrapPeers: cfg.BootstrapPeers,
+		// 	},
+		// 	GenesisAuthCondition: genesisAuthCondition,
+		// }, nil
 
 	case config.NetworkNameTest:
 
 		constants := config.GetTestnetGenesis()
+		genesisMintCondition := config.GetTestnetGenesisMintCondition()
+		genesisAuthCondition := config.GetTestnetGenesisAuthCoinCondition()
 
-		cfg.GenesisMintCondition = config.GetTestnetGenesisMintCondition()
-		cfg.BootstrapPeers = config.GetTestnetBootstrapPeers()
-		cfg.NetworkConfig = daemon.NetworkConfig{
-			Constants:      constants,
-			BootstrapPeers: cfg.BootstrapPeers,
-		}
-		return nil
+		// return the testnet genesis block and bootstrap peers
+		return setupNetworkConfig{
+			NetworkConfig: daemon.NetworkConfig{
+				Constants:      constants,
+				BootstrapPeers: cfg.BootstrapPeers,
+			},
+			GenesisMintCondition: genesisMintCondition,
+			GenesisAuthCondition: genesisAuthCondition,
+		}, nil
 
 	case config.NetworkNameDev:
 
 		constants := config.GetDevnetGenesis()
-		cfg.GenesisMintCondition = config.GetDevnetGenesisMintCondition()
-		cfg.NetworkConfig = daemon.NetworkConfig{
-			Constants:      constants,
-			BootstrapPeers: cfg.BootstrapPeers,
-		}
+		genesisMintCondition := config.GetDevnetGenesisMintCondition()
+		genesisAuthCondition := config.GetDevnetGenesisAuthCoinCondition()
 
-		return nil
+		// return the devnet genesis block and bootstrap peers
+		return setupNetworkConfig{
+			NetworkConfig: daemon.NetworkConfig{
+				Constants:      constants,
+				BootstrapPeers: cfg.BootstrapPeers,
+			},
+			GenesisMintCondition: genesisMintCondition,
+			GenesisAuthCondition: genesisAuthCondition,
+		}, nil
 
 	default:
 		// network isn't recognised
-		return fmt.Errorf(
+		return setupNetworkConfig{}, fmt.Errorf(
 			"Netork name %q not recognized", cfg.BlockchainInfo.NetworkName)
 	}
 }

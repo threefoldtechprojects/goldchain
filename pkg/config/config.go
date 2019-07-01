@@ -54,7 +54,7 @@ func GetStandardnetGenesis() types.ChainConstants {
 
 	// set transaction versions
 	cfg.DefaultTransactionVersion = types.TransactionVersionOne
-	cfg.GenesisTransactionVersion = types.TransactionVersionZero
+	cfg.GenesisTransactionVersion = types.TransactionVersionOne
 
 	// 2 minute block time
 	cfg.BlockFrequency = BlockFrequency
@@ -117,6 +117,7 @@ func GetTestnetGenesis() types.ChainConstants {
 
 	// set transaction versions
 	cfg.DefaultTransactionVersion = types.TransactionVersionOne
+	cfg.GenesisTransactionVersion = types.TransactionVersionOne
 
 	// 2 minute block time
 	cfg.BlockFrequency = BlockFrequency
@@ -176,7 +177,6 @@ func GetDevnetGenesis() types.ChainConstants {
 
 	// set transaction versions
 	cfg.DefaultTransactionVersion = types.TransactionVersionOne
-	// no need to keep v0 as genesis transaction version for the dev network
 	cfg.GenesisTransactionVersion = types.TransactionVersionOne
 
 	// 12 seconds, slow enough for developers to see
@@ -237,6 +237,12 @@ func GetDevnetGenesis() types.ChainConstants {
 	return cfg
 }
 
+// GetStandardnetGenesisAuthCoinCondition returns the genesis auth condition used for the standard (prod) net
+func GetStandardnetGenesisAuthCoinCondition() types.UnlockConditionProxy {
+	// TODO: adapt to real condition, also being multi-sig
+	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f")))
+}
+
 // GetStandardnetBootstrapPeers sets the standard bootstrap node addresses
 func GetStandardnetBootstrapPeers() []modules.NetAddress {
 	return []modules.NetAddress{
@@ -248,6 +254,12 @@ func GetStandardnetBootstrapPeers() []modules.NetAddress {
 	}
 }
 
+// GetTestnetGenesisAuthCoinCondition returns the genesis auth condition used for the testnet
+func GetTestnetGenesisAuthCoinCondition() types.UnlockConditionProxy {
+	// TODO: adapt to real condition, also being multi-sig
+	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f")))
+}
+
 // GetTestnetBootstrapPeers sets the testnet bootstrap node addresses
 func GetTestnetBootstrapPeers() []modules.NetAddress {
 	return []modules.NetAddress{
@@ -257,6 +269,11 @@ func GetTestnetBootstrapPeers() []modules.NetAddress {
 		"bootstrap4.testnet.goldtoken.bnh.com:24112",
 		"bootstrap5.testnet.goldtoken.bnh.com:23112",
 	}
+}
+
+// GetDevnetGenesisAuthCoinCondition returns the genesis auth condition used for the devnet
+func GetDevnetGenesisAuthCoinCondition() types.UnlockConditionProxy {
+	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f")))
 }
 
 // GetDevnetBootstrapPeers sets the default devnet bootstrap node addresses

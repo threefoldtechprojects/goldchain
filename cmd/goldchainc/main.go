@@ -8,6 +8,8 @@ import (
 	"github.com/threefoldtech/rivine/pkg/daemon"
 
 	"github.com/nbh-digital/goldchain/pkg/config"
+	"github.com/nbh-digital/goldchain/pkg/types"
+	authcointxcli "github.com/threefoldtech/rivine/extensions/authcointx/client"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/pkg/client"
 )
@@ -20,7 +22,9 @@ func main() {
 		panic(err)
 	}
 
-	// register goldchain-specific commands
+	// register goldchain-specific explorer/consensus commands
+	authcointxcli.CreateConsensusAuthCoinInfoCmd(cliClient.CommandLineClient)
+	authcointxcli.CreateExploreAuthCoinInfoCmd(cliClient.CommandLineClient)
 
 	// define preRun function
 	cliClient.PreRunE = func(cfg *client.Config) (*client.Config, error) {
@@ -50,6 +54,13 @@ func main() {
 		default:
 			return nil, fmt.Errorf("Network name %q not recognized", cfg.NetworkName)
 		}
+
+		// add cli wallet extension commands
+		authcointxcli.CreateWalletCmds(
+			cliClient.CommandLineClient,
+			types.TransactionVersionAuthConditionUpdateTx,
+			types.TransactionVersionAuthAddressUpdateTx,
+		)
 
 		return cfg, nil
 	}

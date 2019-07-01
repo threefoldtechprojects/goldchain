@@ -51,6 +51,7 @@ func main() {
 
 		switch cfg.NetworkName {
 		case config.NetworkNameStandard:
+			RegisterStandardTransactions(cliClient.CommandLineClient)
 
 			// overwrite standard network genesis block stamp,
 			// as the genesis block is way earlier than the actual first block,
@@ -58,11 +59,13 @@ func main() {
 			cfg.GenesisBlockTimestamp = 1524168391 // timestamp of (standard) block #1
 
 		case config.NetworkNameTest:
+			RegisterTestnetTransactions(cliClient.CommandLineClient)
 
 			// seems like testnet timestamp wasn't updated last time it was reset
 			cfg.GenesisBlockTimestamp = 1522792547 // timestamp of (testnet) block #1
 
 		case config.NetworkNameDev:
+			RegisterDevnetTransactions(cliClient.CommandLineClient)
 
 		default:
 			return nil, fmt.Errorf("Network name %q not recognized", cfg.NetworkName)

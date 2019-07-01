@@ -42,6 +42,22 @@ install-std:
 	go build -ldflags '$(ldflagsversion)' -o $(daemonbin) $(daemonpkgs)
 	go build -ldflags '$(ldflagsversion)' -o $(clientbin) $(clientpkgs)
 
+embed-explorer-version:
+	$(eval TEMPDIR = $(shell mktemp -d))
+	cp -r ./frontend $(TEMPDIR)
+	sed -i 's/version=0/version=$(fullversion)/g' $(TEMPDIR)/frontend/explorer/public/*.html
+	sed -i 's/version=null/version=\"$(fullversion)\"/g' $(TEMPDIR)/frontend/explorer/public/js/footer.js
+	sed -i 's/versionpath=null/versionpath=\"$(fullversionpath)\"/g' $(TEMPDIR)/frontend/explorer/public/js/footer.js
+
+explorer: release-dir embed-explorer-version
+	tar -C $(TEMPDIR)/frontend -czvf release/explorer-latest.tar.gz explorer
+
+release-explorer: get_hub_jwt explorer
+	# Upload explorer flist
+	curl -b "active-user=goldchain; caddyoauth=$(HUB_JWT)" -F file=@./release/explorer-latest.tar.gz "https://hub.grid.tf/api/flist/me/upload"
+	# Merge with caddy
+	curl -b "active-user=goldchain; caddyoauth=$(HUB_JWT)" -X POST --data "[\"tf-official-apps/caddy.flist\", \"goldchain/explorer-latest.flist\"]" "https://hub.grid.tf/api/flist/me/merge/caddy-explorer-latest.flist"
+
 # create an flist and upload it to the hub
 release-flist: archive get_hub_jwt
 	curl -b "active-user=goldchain; caddyoauth=$(HUB_JWT)" -F file=@./release/goldchain-latest.tar.gz "https://hub.grid.tf/api/flist/me/upload"

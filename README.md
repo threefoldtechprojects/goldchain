@@ -89,6 +89,15 @@ In order to transfer to a multi-signature multiple addresses can be defined (and
 goldchainc wallet send transaction "$(goldchainc wallet sign "$(goldchainc wallet authcoin updatecondition 0175e1a00548730d67ec1b46bc0fe469e7b9888cfab3c08548aaf900afaa52564520c537d665ca 01752fb52375a6b0521890673a9a901fce6c88e3e272613bf5eb0c467b064e773b6ce4c54a2931 1)")"
 ```
 
+#### Explore authorization conditions and addresses
+
+Please consult the `--help` menu of the following explore command for more information
+on how to explore the active (or at a certain block height) auth condition and authorization state (boolean) of an address:
+
+```
+goldchainc explore authcoin --help
+```
+
 ### Minting
 
 Please consult the Rivine documentation about the Minting Extension for more information about this feature and its transactions:
@@ -99,3 +108,5 @@ Please consult the `--help` menu of the relevant commands using the following co
 
 - Create a Minter Definition Transaction: `goldchainc wallet create minterdefinitiontransaction --help`
 - Create a Coin Creation Transaction: `goldchainc wallet create coincreationtransaction --help`
+- Explore the mint condition currently active or at a given block height: `goldchainc explore mintcondition --help`
+ 

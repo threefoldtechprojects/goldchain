@@ -1489,7 +1489,27 @@ function appendUnlockHashTables(domParent, hash, explorerHash) {
 			addressLabel = "Multisig Address";
 			break;
 	}
-	appendStatTableTitle(domParent, hashTitle);
+	// auth authentication state
+	var authStatus = fetchCurrentAddressAuthStatus(hash);
+	var authStatusElement = null;
+	if (authStatus) {
+		authStatusElement = document.createElement('font');
+		authStatusElement.setAttribute('color', 'green');
+		authStatusElement.appendChild(document.createTextNode('(authorized)'));
+	} else {
+		authStatusElement = document.createElement('font');
+		authStatusElement.setAttribute('color', 'red');
+		authStatusElement.appendChild(document.createTextNode('(not authorized)'));
+	}
+	var spanAuthStatusElement = document.createElement('span');
+	spanAuthStatusElement.appendChild(document.createTextNode(' '));
+	spanAuthStatusElement.appendChild(authStatusElement);
+	// add title (with auth state)
+	var titleHolder = document.createElement('h2');
+	titleHolder.appendChild(document.createTextNode(hashTitle));
+	titleHolder.appendChild(spanAuthStatusElement);
+	domParent.appendChild(titleHolder);
+	// add rest of content
 	var addressInfoTable = createStatsTable();
 	domParent.appendChild(addressInfoTable)
 	var doms = appendStat(addressInfoTable, addressLabel, '');
@@ -2105,6 +2125,19 @@ function fetchHashInfo(hash) {
 		return 'error';
 	}
 	return JSON.parse(request.responseText);
+}
+
+// fetchCurrentAddressAuthStatus queries the explorer for auth status info at the current block height
+function fetchCurrentAddressAuthStatus(address) {
+	var request = new XMLHttpRequest();
+	var reqString = '/explorer/authcoin/address/' + address;
+	request.open('GET', reqString, false);
+	request.send();
+	if (request.status != 200) {
+		return 'error';
+	}
+	resp = JSON.parse(request.responseText) || {};
+	return resp.auth || false;
 }
 
 // parseHashQuery parses the query string in the URL and loads the block

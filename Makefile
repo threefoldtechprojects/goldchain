@@ -67,7 +67,7 @@ release-flist: archive get_hub_jwt
 
 # create release archives: linux, mac and flist
 archive: release-dir
-	./release.sh
+	./release.sh archive
 
 release-dir:
 	[ -d release ] || mkdir release

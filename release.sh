@@ -21,7 +21,7 @@ fi
 
 echo "building version ${version}"
 
-for os in darwin linux; do
+for os in darwin windows linux; do
 	echo Packaging ${os}...
 	# create workspace
 	folder="release/goldchain-${version}-${os}-amd64"
@@ -37,7 +37,7 @@ for os in darwin linux; do
 
 	if [ "$ARCHIVE" = true ] ; then
 		# add other artifacts
-		cp -r doc LICENSE README.md "$folder"
+		cp -r LICENSE README.md "$folder"
 		# go into the release directory
 		pushd release &> /dev/null
 		# zip
@@ -47,9 +47,6 @@ for os in darwin linux; do
 		)
 		# leave the release directory
 		popd &> /dev/null
-
-		# clean up workspace dir
-		rm -rf "$folder"
 	fi
 done
 

@@ -62,7 +62,7 @@ func main() {
 			RegisterTestnetTransactions(cliClient.CommandLineClient)
 
 			// seems like testnet timestamp wasn't updated last time it was reset
-			cfg.GenesisBlockTimestamp = 1522792547 // timestamp of (testnet) block #1
+			cfg.GenesisBlockTimestamp = 1562153400 // timestamp of (testnet) block #1
 
 		case config.NetworkNameDev:
 			RegisterDevnetTransactions(cliClient.CommandLineClient)

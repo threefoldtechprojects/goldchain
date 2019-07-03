@@ -18,8 +18,8 @@ func GetStandardGenesisMintCondition() types.UnlockConditionProxy {
 
 // GetTestnetGenesisMintCondition returns the testnet network  minting condition
 func GetTestnetGenesisMintCondition() types.UnlockConditionProxy {
-	// TODO: define final multisig condition
-	address := ""
+	// @leesmet
+	address := "01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f"
 	var uh types.UnlockHash
 	if err := uh.LoadString(address); err != nil {
 		panic(err)

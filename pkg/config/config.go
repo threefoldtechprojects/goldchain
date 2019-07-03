@@ -148,23 +148,23 @@ func GetTestnetGenesis() types.ChainConstants {
 	// Use 0.001 coins as minimum transaction fee
 	cfg.MinimumTransactionFee = cfg.CurrencyUnits.OneCoin.Div64(1000)
 
-	// // no  initial coins, except  1 for initial transaction fee payments
+	// Start with 100M coins
 	cfg.GenesisCoinDistribution = []types.CoinOutput{
 		{
 			// Create 100M coins
-			Value: cfg.CurrencyUnits.OneCoin,
-			//
-			Condition: types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex(""))),
+			Value: cfg.CurrencyUnits.OneCoin.Mul64(100 * 1000 * 1000),
+			// @leesmet
+			Condition: types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f"))),
 		},
 	}
 
 	// allocate block stakes
 	cfg.GenesisBlockStakeAllocation = []types.BlockStakeOutput{
 		{
-			// Create 1000 blockstakes
-			Value: types.NewCurrency64(1000),
+			// Create 3000 blockstakes
+			Value: types.NewCurrency64(3000),
 			// @leesmet
-			Condition: types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex(""))),
+			Condition: types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f"))),
 		},
 	}
 
@@ -246,28 +246,29 @@ func GetStandardnetGenesisAuthCoinCondition() types.UnlockConditionProxy {
 // GetStandardnetBootstrapPeers sets the standard bootstrap node addresses
 func GetStandardnetBootstrapPeers() []modules.NetAddress {
 	return []modules.NetAddress{
-		"bootstrap1.goldtoken.bnh.com:23112",
-		"bootstrap2.goldtoken.bnh.com:23112",
-		"bootstrap3.goldtoken.bnh.com:23112",
-		"bootstrap4.goldtoken.bnh.com:23112",
-		"bootstrap5.goldtoken.bnh.com:23112",
+		"bootstrap1.goldtoken.bnh.com:22112",
+		"bootstrap2.goldtoken.bnh.com:22112",
+		"bootstrap3.goldtoken.bnh.com:22112",
+		"bootstrap4.goldtoken.bnh.com:22112",
+		"bootstrap5.goldtoken.bnh.com:22112",
 	}
 }
 
 // GetTestnetGenesisAuthCoinCondition returns the genesis auth condition used for the testnet
 func GetTestnetGenesisAuthCoinCondition() types.UnlockConditionProxy {
-	// TODO: adapt to real condition, also being multi-sig
-	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f")))
+	// @leesmet, to be changed to 1 out of 2 multisig once we have an automated
+	// faucet for this
+	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f")))
 }
 
 // GetTestnetBootstrapPeers sets the testnet bootstrap node addresses
 func GetTestnetBootstrapPeers() []modules.NetAddress {
 	return []modules.NetAddress{
-		"bootstrap1.testnet.nbh-digital.com:23112",
-		"bootstrap2.testnet.nbh-digital.com:23112",
-		"bootstrap3.testnet.nbh-digital.com:23112",
-		"bootstrap4.testnet.nbh-digital.com:24112",
-		"bootstrap5.testnet.nbh-digital.com:23112",
+		"bootstrap1.testnet.nbh-digital.com:22112",
+		"bootstrap2.testnet.nbh-digital.com:22112",
+		"bootstrap3.testnet.nbh-digital.com:22112",
+		"bootstrap4.testnet.nbh-digital.com:22112",
+		"bootstrap5.testnet.nbh-digital.com:22112",
 	}
 }
 

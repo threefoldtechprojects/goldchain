@@ -280,7 +280,7 @@ func GetDevnetGenesisAuthCoinCondition() types.UnlockConditionProxy {
 // GetDevnetBootstrapPeers sets the default devnet bootstrap node addresses
 func GetDevnetBootstrapPeers() []modules.NetAddress {
 	return []modules.NetAddress{
-		"localhost:23112",
+		"localhost:22112",
 	}
 }
 

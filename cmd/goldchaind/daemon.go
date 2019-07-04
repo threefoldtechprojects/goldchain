@@ -337,6 +337,7 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 		// // supported on the standard network
 		// goldchaintypes.RegisterTransactionTypesForStandardNetwork(constants.CurrencyUnits.OneCoin, networkConfig)
 
+		// todo set bootstrap peers only if not set yet
 		// cfg.BootstrapPeers = config.GetStandardnetBootstrapPeers()
 
 		// // return the standard genesis block and bootstrap peers
@@ -354,11 +355,16 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 		genesisMintCondition := config.GetTestnetGenesisMintCondition()
 		genesisAuthCondition := config.GetTestnetGenesisAuthCoinCondition()
 
+		bootstrapPeers := cfg.BootstrapPeers
+		if len(bootstrapPeers) == 0 {
+			bootstrapPeers = config.GetTestnetBootstrapPeers()
+		}
+
 		// return the testnet genesis block and bootstrap peers
 		return setupNetworkConfig{
 			NetworkConfig: daemon.NetworkConfig{
 				Constants:      constants,
-				BootstrapPeers: cfg.BootstrapPeers,
+				BootstrapPeers: bootstrapPeers,
 			},
 			GenesisMintCondition: genesisMintCondition,
 			GenesisAuthCondition: genesisAuthCondition,
@@ -370,11 +376,16 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 		genesisMintCondition := config.GetDevnetGenesisMintCondition()
 		genesisAuthCondition := config.GetDevnetGenesisAuthCoinCondition()
 
+		bootstrapPeers := cfg.BootstrapPeers
+		if len(bootstrapPeers) == 0 {
+			bootstrapPeers = config.GetDevnetBootstrapPeers()
+		}
+
 		// return the devnet genesis block and bootstrap peers
 		return setupNetworkConfig{
 			NetworkConfig: daemon.NetworkConfig{
 				Constants:      constants,
-				BootstrapPeers: cfg.BootstrapPeers,
+				BootstrapPeers: bootstrapPeers,
 			},
 			GenesisMintCondition: genesisMintCondition,
 			GenesisAuthCondition: genesisAuthCondition,

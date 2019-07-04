@@ -14,7 +14,7 @@ import (
 func main() {
 	var cmds commands
 	// load default config to start with
-	cmds.cfg.Config = daemon.DefaultConfig()
+	cmds.cfg.Config = DefaultConfig()
 	cmds.cfg.BlockchainInfo = config.GetBlockchainInfo()
 
 	// load default config flag

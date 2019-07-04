@@ -8,3 +8,11 @@ import (
 type ExtendedDaemonConfig struct {
 	daemon.Config
 }
+
+// DefaultConfig returns the default daemon configuration
+func DefaultConfig() daemon.Config {
+	cfg := daemon.DefaultConfig()
+	cfg.APIaddr = "localhost:22112"
+	cfg.RPCaddr = ":22110"
+	return cfg
+}

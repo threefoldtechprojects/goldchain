@@ -125,8 +125,8 @@ func GetTestnetGenesis() types.ChainConstants {
 	// Payouts take rougly 1 day to mature.
 	cfg.MaturityDelay = 720
 
-	// The genesis timestamp is set to July 3rd, 2019
-	cfg.GenesisTimestamp = types.Timestamp(1562153400) // July 3rd, 2019 @ 11:30am UTC.
+	// The genesis timestamp is set to July 5th, 2019
+	cfg.GenesisTimestamp = types.Timestamp(1562324400) // July 5th, 2019 @ 11:00am UTC.
 
 	// 1000 block window for difficulty
 	cfg.TargetWindow = 1e3

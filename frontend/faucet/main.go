@@ -61,6 +61,11 @@ func main() {
 	http.HandleFunc("/request/tokens", f.requestTokensHandler)
 	http.HandleFunc("/request/authorize", f.requestAuthorizationHandler)
 
+	// register API endpoint
+	http.HandleFunc("/api/v1/coins", f.requestCoins)
+	http.HandleFunc("/api/v1/authorize", f.requestAuthorization)
+	http.HandleFunc("/api/v1/deauthorize", f.requestDeauthorization)
+
 	log.Println("[INFO] Faucet ready to serve")
 
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", websitePort), nil))

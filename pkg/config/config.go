@@ -41,7 +41,7 @@ const (
 func GetBlockchainInfo() types.BlockchainInfo {
 	return types.BlockchainInfo{
 		Name:            GoldchainTokenChainName,
-		NetworkName:     NetworkNameStandard,
+		NetworkName:     NetworkNameTest,
 		CoinUnit:        GolchainTokenUnit,
 		ChainVersion:    Version,       // use our own blockChain/build version
 		ProtocolVersion: build.Version, // use latest available rivine protocol version

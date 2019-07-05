@@ -18,7 +18,7 @@ import (
 func main() {
 	// create cli
 	bchainInfo := config.GetBlockchainInfo()
-	cliClient, err := NewCommandLineClient("", bchainInfo.Name, daemon.RivineUserAgent)
+	cliClient, err := NewCommandLineClient("http://localhost:22112", bchainInfo.Name, daemon.RivineUserAgent)
 	if err != nil {
 		panic(err)
 	}

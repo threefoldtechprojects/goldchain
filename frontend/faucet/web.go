@@ -46,6 +46,7 @@ func (f *faucet) requestTokensHandler(w http.ResponseWriter, r *http.Request) {
 	txID, err := dripCoins(uh, f.coinsToGive)
 	// print a nice message for unauthorized addresses
 	if err == errUnauthorized {
+		log.Println("[DEBUG] Requested tokens for unauthorized address", strUH)
 		renderRequestTemplate(w, RequestBody{
 			ChainName:    f.cts.ChainInfo.Name,
 			ChainNetwork: f.cts.ChainInfo.NetworkName,

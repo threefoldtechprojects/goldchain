@@ -26,15 +26,20 @@ var requestTemplate = mustTemplate("request.html", fmt.Sprintf(`
 </head>
 <body>
 	<div align="center">
-		<h1>{{.ChainName}} {{.ChainNetwork}} faucet</h1>
+		<h1 style="margin-top:3em">{{.ChainName}} {{.ChainNetwork}} faucet</h1>
+
+		{{if .Error}}
+		<div style="margin:50px;display:inline-flex;align-items:center;border:3px solid red;padding:10px;background:#ffe5e5;">
+			<div style="font-size:80px;border:2px solid red;border-radius:50%%;width:80px;color:red;line-height:80px;">!</div>
+			<div style="color:red;display:inline-block;padding: 0 20px;font-weight:bold">{{.Error}}</div>
+		</div>
+		{{end}}
+
 		<h3>Request %[1]d {{.CoinUnit}} by entering your address below and submitting the form.</h3>
-	
-		<div style="color:red;">{{.Error}}</div>
-	
 		<form action="/request/tokens" method="POST">
 			<div>Address: <input type="text" size="78" name="uh"></div>
 			<br>
-			<div><input type="submit" value="Request %[1]d {{.CoinUnit}}" style="width:20em;height:2em;"></div>
+			<div><input type="submit" value="Request %[1]d {{.CoinUnit}}" style="width:20em;height:2em;font-weight:bold;font-size:1em;"></div>
 		</form>
 
 		<h3 style="margin-top:50px;">Request authorization or deauthorization by entering your address below and submitting the form.</h3>
@@ -44,7 +49,7 @@ var requestTemplate = mustTemplate("request.html", fmt.Sprintf(`
 			<input type="radio" name="authorize" value="true" checked>Authorize<br>
 			<input type="radio" name="authorize" value="false">Deauthorize<br>
 			<br>
-			<div><input type="submit" value="Request address authorization update" style="width:20em;height:2em;"></div>
+			<div><input type="submit" value="Request address authorization update" style="width:20em;height:2em;font-weight:bold;font-size:1em;"></div>
 		</form>
 	
 		<div style="margin-top:50px;"><small>{{.ChainName}} faucet v%s</small></div>

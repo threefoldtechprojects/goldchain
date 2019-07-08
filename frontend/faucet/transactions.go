@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/threefoldtech/rivine/extensions/authcointx"
@@ -10,6 +11,7 @@ import (
 	"github.com/threefoldtech/rivine/types"
 
 	gtypes "github.com/nbh-digital/goldchain/pkg/types"
+	authapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
 )
 
 var (
@@ -36,7 +38,6 @@ func updateAddressAuthorization(address types.UnlockHash, authorize bool) (types
 	if err != nil {
 		return types.TransactionID{}, err
 	}
-	// TODO: better client
 	err = httpClient.PostResp("/wallet/sign", string(data), &signedTx)
 	if err != nil {
 		return types.TransactionID{}, err
@@ -55,6 +56,17 @@ func updateAddressAuthorization(address types.UnlockHash, authorize bool) (types
 }
 
 func dripCoins(address types.UnlockHash, amount types.Currency) (types.TransactionID, error) {
+	// Check if address is authorized first
+	var result authapi.GetAddressAuthStateResponse
+	err := httpClient.GetAPI(fmt.Sprintf("/consensus/authcoin/address/%s", address.String()), &result)
+	if err != nil {
+		return types.TransactionID{}, err
+	}
+
+	if !result.AuthState {
+		return types.TransactionID{}, errUnauthorized
+	}
+
 	data, err := json.Marshal(api.WalletCoinsPOST{
 		CoinOutputs: []types.CoinOutput{
 			{

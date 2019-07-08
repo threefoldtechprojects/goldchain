@@ -9,6 +9,7 @@ import (
 	"github.com/nbh-digital/goldchain/pkg/config"
 	"github.com/threefoldtech/rivine/extensions/authcointx"
 	"github.com/threefoldtech/rivine/modules"
+	"github.com/threefoldtech/rivine/pkg/api"
 	"github.com/threefoldtech/rivine/pkg/daemon"
 	"github.com/threefoldtech/rivine/types"
 
@@ -25,7 +26,7 @@ type faucet struct {
 
 var (
 	websitePort int
-	httpClient  = &HTTPClient{
+	httpClient  = &api.HTTPClient{
 		RootURL:   "http://localhost:22110",
 		Password:  "",
 		UserAgent: daemon.RivineUserAgent,

@@ -52,6 +52,7 @@ type pluginMetadata struct {
 // consensus updates it is missing (as a special case this means anything).
 // This initial sync is cancelled if tyhe passed context is cancelled.
 func (cs *ConsensusSet) RegisterPlugin(ctx context.Context, name string, plugin modules.ConsensusSetPlugin) error {
+	cs.log.Debugln("Registering plugin ", name)
 	if name == "" {
 		return ErrPluginNameEmpty
 	}
@@ -91,40 +92,43 @@ func (cs *ConsensusSet) RegisterPlugin(ctx context.Context, name string, plugin 
 		return err
 	}
 
-	if newConsensusChangeID == consensusChangeID {
-		return nil // return early
-	}
-	// update the plugin metadata and call it done
-	return cs.db.Update(func(tx *bolt.Tx) error {
-		rootbucket := tx.Bucket(BucketPlugins)
-		// get the metadata bucket from the rootbucket
-		metadataBucket := rootbucket.Bucket(bucketPluginsMetadata)
-		if metadataBucket == nil {
-			return ErrPluginGhostMetadata
-		}
-		// get the plugin metadata as-is
-		pluginMetadataBytes := metadataBucket.Get([]byte(name))
-		if len(pluginMetadataBytes) == 0 {
-			return ErrMissingPluginMetadata
-		}
-		var pluginMetadata pluginMetadata
-		err := rivbin.Unmarshal(pluginMetadataBytes, &pluginMetadata)
+	if newConsensusChangeID != consensusChangeID {
+		err = cs.db.Update(func(tx *bolt.Tx) error {
+			rootbucket := tx.Bucket(BucketPlugins)
+			// get the metadata bucket from the rootbucket
+			metadataBucket := rootbucket.Bucket(bucketPluginsMetadata)
+			if metadataBucket == nil {
+				return ErrPluginGhostMetadata
+			}
+			// get the plugin metadata as-is
+			pluginMetadataBytes := metadataBucket.Get([]byte(name))
+			if len(pluginMetadataBytes) == 0 {
+				return ErrMissingPluginMetadata
+			}
+			var pluginMetadata pluginMetadata
+			err := rivbin.Unmarshal(pluginMetadataBytes, &pluginMetadata)
+			if err != nil {
+				return err
+			}
+
+			// save the new metadata
+			pluginMetadata.ConsensusChangeID = newConsensusChangeID
+
+			return metadataBucket.Put([]byte(name), rivbin.Marshal(pluginMetadata))
+		})
 		if err != nil {
 			return err
 		}
+	}
 
-		// save the new metadata
-		pluginMetadata.ConsensusChangeID = newConsensusChangeID
-
-		// Check if map is nil, if nil make one
-		if cs.plugins == nil {
-			cs.plugins = make(map[string]modules.ConsensusSetPlugin)
-		}
-		// Add plugin to cs plugins map
-		cs.plugins[name] = plugin
-
-		return metadataBucket.Put([]byte(name), rivbin.Marshal(pluginMetadata))
-	})
+	// Check if map is nil, if nil make one
+	if cs.plugins == nil {
+		cs.plugins = make(map[string]modules.ConsensusSetPlugin)
+	}
+	// Add plugin to cs plugins map
+	cs.plugins[name] = plugin
+	// return without errors
+	return nil
 }
 
 // initPluginSync ensures the plugin receives all
@@ -271,6 +275,7 @@ func (cs *ConsensusSet) initConsensusSetPlugin(tx *bolt.Tx, name string, plugin 
 	}
 
 	var pluginStorage modules.PluginViewStorage
+	cs.log.Debugln("Creating new pluginstorage for ", name)
 	pluginStorage = NewPluginStorage(cs.db, name, &cs.pluginsWaitGroup)
 	// init plugin
 	pluginVersion, err := plugin.InitPlugin(pluginMetadata.Version, bucket, pluginStorage, func(plugin modules.ConsensusSetPlugin) {
@@ -290,6 +295,23 @@ func (cs *ConsensusSet) initConsensusSetPlugin(tx *bolt.Tx, name string, plugin 
 	return pluginMetadata.ConsensusChangeID, nil
 }
 
+//closePlugins calls Close on all registered plugins
+func (cs *ConsensusSet) closePlugins() error {
+	if err := cs.tg.Add(); err != nil {
+		return err
+	}
+	defer cs.tg.Done()
+	cs.log.Debugln("Number of plugins to close:", len(cs.plugins))
+
+	for name, plugin := range cs.plugins {
+		cs.log.Debugln("Closing plugin ", name)
+		if err := plugin.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // UnregisterPlugin removes a plugin from the map of plugins
 func (cs *ConsensusSet) UnregisterPlugin(name string, plugin modules.ConsensusSetPlugin) {
 	if cs.tg.Add() != nil {
@@ -300,6 +322,7 @@ func (cs *ConsensusSet) UnregisterPlugin(name string, plugin modules.ConsensusSe
 	defer cs.mu.Unlock()
 
 	if existingPlugin, ok := cs.plugins[name]; ok && existingPlugin == plugin {
+		plugin.Close()
 		delete(cs.plugins, name)
 	} else {
 		fmt.Printf("try to delete plugin %s, plugin does not exist", name)

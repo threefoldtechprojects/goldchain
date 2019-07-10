@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 
 	"github.com/nbh-digital/goldchain/pkg/config"
 	"github.com/threefoldtech/rivine/extensions/authcointx"
@@ -22,6 +23,10 @@ type faucet struct {
 	cts *modules.DaemonConstants
 	// coinsToGive is the amount of coins given in a single transaction
 	coinsToGive types.Currency
+
+	// lock to protect the fund endpoints. This ensures the wallet
+	// we talk to only has 1 tx in progress at the same time
+	mu sync.Mutex
 }
 
 var (

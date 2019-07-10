@@ -26,7 +26,10 @@ func (f *faucet) requestCoins(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[DEBUG] Requesting coins (%s) through API\n", body.Address.String())
 
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	txID, err := dripCoins(body.Address, f.coinsToGive)
+
 	if err != nil {
 		log.Println("[ERROR] Failed to drip coins:", err)
 		if err == errUnauthorized {

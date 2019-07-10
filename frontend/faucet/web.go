@@ -43,6 +43,8 @@ func (f *faucet) requestTokensHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log.Println("[DEBUG] Requesting tokens for address", strUH)
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	txID, err := dripCoins(uh, f.coinsToGive)
 	// print a nice message for unauthorized addresses
 	if err == errUnauthorized {

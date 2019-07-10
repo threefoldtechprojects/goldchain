@@ -83,5 +83,8 @@ func dripCoins(address types.UnlockHash, amount types.Currency) (types.Transacti
 
 	var resp api.WalletCoinsPOSTResp
 	err = httpClient.PostResp("/wallet/coins", string(data), &resp)
+	if err != nil {
+		log.Println("[ERROR] /wallet/coins - request body:", string(data))
+	}
 	return resp.TransactionID, err
 }

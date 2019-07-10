@@ -29,6 +29,10 @@ func (f *faucet) requestCoins(w http.ResponseWriter, r *http.Request) {
 	txID, err := dripCoins(body.Address, f.coinsToGive)
 	if err != nil {
 		log.Println("[ERROR] Failed to drip coins:", err)
+		if err == errUnauthorized {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

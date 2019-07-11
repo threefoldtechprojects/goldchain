@@ -310,7 +310,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 		fmt.Println("\rCaught stop signal, quitting...")
 		srv.Close()
 	case <-ctx.Done():
-		fmt.Println("\rContext is done, quitting..."
+		fmt.Println("\rContext is done, quitting...")
 	}
 
 	cancel()

@@ -139,6 +139,10 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			err = cs.RegisterPlugin(ctx, "authcointx", authCoinTxPlugin)
 			if err != nil {
 				servErrs <- fmt.Errorf("failed to register the auth coin tx extension: %v", err)
+				err = authCoinTxPlugin.Close() //make sure any resources are released
+				if err != nil {
+					fmt.Println("Error during closing of the authCoinTxPlugin :", err)
+				}
 				cancel()
 				return
 			}
@@ -154,6 +158,10 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			err = cs.RegisterPlugin(ctx, "minting", mintingPlugin)
 			if err != nil {
 				servErrs <- fmt.Errorf("failed to register the minting extension: %v", err)
+				err = mintingPlugin.Close() //make sure any resources are released
+				if err != nil {
+					fmt.Println("Error during closing of the mintingPlugin :", err)
+				}
 				cancel()
 				return
 			}
@@ -302,8 +310,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 		fmt.Println("\rCaught stop signal, quitting...")
 		srv.Close()
 	case <-ctx.Done():
-		fmt.Println("\rContext is done, quitting...")
-		fmt.Println("context is done, quitting...")
+		fmt.Println("\rContext is done, quitting..."
 	}
 
 	cancel()

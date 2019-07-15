@@ -7,6 +7,8 @@ const (
 	MinterDefinitionTxVersion types.TransactionVersion = iota + 128
 	//CoinCreationTxVersion is the transaction version for the coin creation transaction
 	CoinCreationTxVersion
+	//CoinDestructionTxVersion is the transaction version for the coin destruction transaction
+	CoinDestructionTxVersion
 )
 
 // Auth Coin Tx Extension Transaction Versions

@@ -32,6 +32,9 @@ func main() {
 		cliClient.CommandLineClient,
 		types.MinterDefinitionTxVersion,
 		types.CoinCreationTxVersion,
+		&mintingcli.WalletCmdsOpts{
+			CoinDestructionTxVersion: types.CoinDestructionTxVersion,
+		},
 	)
 	authcointxcli.CreateWalletCmds(
 		cliClient.CommandLineClient,

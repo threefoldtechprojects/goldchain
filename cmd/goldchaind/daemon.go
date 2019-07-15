@@ -154,6 +154,9 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				setupNetworkCfg.GenesisMintCondition,
 				goldchaintypes.MinterDefinitionTxVersion,
 				goldchaintypes.CoinCreationTxVersion,
+				&minting.PluginOptions{
+					CoinDestructionTransactionVersion: goldchaintypes.CoinDestructionTxVersion,
+				},
 			)
 			err = cs.RegisterPlugin(ctx, "minting", mintingPlugin)
 			if err != nil {

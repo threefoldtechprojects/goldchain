@@ -40,6 +40,9 @@ func registerTransactions(cli *client.CommandLineClient) {
 		MintConditionGetter: mintingCLI,
 		TransactionVersion:  gctypes.CoinCreationTxVersion,
 	})
+	types.RegisterTransactionVersion(gctypes.CoinDestructionTxVersion, minting.CoinDestructionTransactionController{
+		TransactionVersion: gctypes.CoinDestructionTxVersion,
+	})
 
 	// create coin auth tx plugin client...
 	authCoinTxCLI := authcointxcli.NewPluginConsensusClient(cli)

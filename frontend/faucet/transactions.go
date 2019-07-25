@@ -57,13 +57,23 @@ func updateAddressAuthorization(address types.UnlockHash, authorize bool) (types
 
 func dripCoins(address types.UnlockHash, amount types.Currency) (types.TransactionID, error) {
 	// Check if address is authorized first
-	var result authapi.GetAddressAuthStateResponse
-	err := httpClient.GetAPI(fmt.Sprintf("/consensus/authcoin/address/%s", address.String()), &result)
+	var result authapi.GetAddressesAuthStateResponse
+	err := httpClient.GetAPI(fmt.Sprintf("/consensus/authcoin/status?addr=%s", address.String()), &result)
 	if err != nil {
 		return types.TransactionID{}, err
 	}
+	if len(result.AuthStates) == 0 {
+		return types.TransactionID{}, fmt.Errorf(
+			"failed to check authorization state for address %s: no auth states or error returned",
+			address.String())
+	}
+	if len(result.AuthStates) > 1 {
+		return types.TransactionID{}, fmt.Errorf(
+			"failed to check authorization state for address %s: ambiguity issue: more than one auth state returned, while one was expected",
+			address.String())
+	}
 
-	if !result.AuthState {
+	if !result.AuthStates[0] {
 		return types.TransactionID{}, errUnauthorized
 	}
 

@@ -2130,14 +2130,14 @@ function fetchHashInfo(hash) {
 // fetchCurrentAddressAuthStatus queries the explorer for auth status info at the current block height
 function fetchCurrentAddressAuthStatus(address) {
 	var request = new XMLHttpRequest();
-	var reqString = '/explorer/authcoin/address/' + address;
+	var reqString = '/explorer/authcoin/status?addr=' + address;
 	request.open('GET', reqString, false);
 	request.send();
 	if (request.status != 200) {
 		return 'error';
 	}
 	resp = JSON.parse(request.responseText) || {};
-	return resp.auth || false;
+	return (resp.auths && resp.auths.length === 1 && resp.auths[0]) || false;
 }
 
 // parseHashQuery parses the query string in the URL and loads the block

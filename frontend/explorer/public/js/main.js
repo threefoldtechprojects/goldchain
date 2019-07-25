@@ -391,6 +391,8 @@ function txVersionName(version) {
 			return "Minter Definition";
 		case 129:
 			return "Coin Creation";
+		case 130:
+			return "Burn Transaction";
 
 		case 176:
 			return "Address Authentication Update";

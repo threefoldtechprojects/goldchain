@@ -89,5 +89,6 @@ func init() {
 		config.GetTestnetGenesisAuthCoinCondition(),
 		gtypes.TransactionVersionAuthAddressUpdateTx,
 		gtypes.TransactionVersionAuthConditionUpdateTx,
+		nil,
 	)
 }

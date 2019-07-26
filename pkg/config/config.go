@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	rawVersion = "v0.1"
+	rawVersion = "v0.2"
 	// Version of the goldchain binaries.
 	//
 	// Value is defined by a private build flag,
@@ -125,8 +125,8 @@ func GetTestnetGenesis() types.ChainConstants {
 	// Payouts take rougly 1 day to mature.
 	cfg.MaturityDelay = 720
 
-	// The genesis timestamp is set to July 5th, 2019
-	cfg.GenesisTimestamp = types.Timestamp(1562324400) // July 5th, 2019 @ 11:00am UTC.
+	// The genesis timestamp is set to July 26th, 2019
+	cfg.GenesisTimestamp = types.Timestamp(1564142400) // July 26th, 2019 @ 12:00pm UTC.
 
 	// 1000 block window for difficulty
 	cfg.TargetWindow = 1e3

@@ -15,6 +15,9 @@ function appendTransactionStatistics(infoBody, explorerTransaction, confirmed) {
 		case 129: // coin creation
 			appendV129Transaction(infoBody, explorerTransaction, confirmed);
 			break;
+		case 130: // burn transaction
+			appendV130Transaction(infoBody, explorerTransaction, confirmed);
+			break;
 		// auth coin transactions
 		case 176: // address update
 			appendV176Transaction(infoBody, explorerTransaction, confirmed);
@@ -512,6 +515,79 @@ function appendV129Transaction(infoBody, explorerTransaction, confirmed) {
 		infoBody.appendChild(table);
 	}
 
+	if (confirmed) {
+		var payouts = getMinerFeesAsFeePayouts(explorerTransaction.id, explorerTransaction.parent);
+		if (payouts != null) {
+			// In a loop, add a new table for each miner payout.
+			appendStatTableTitle(infoBody, 'Transaction Fee Payouts');
+			for (var i = 0; i < payouts.length; i++) {
+				var table = createStatsTable();
+				var doms = appendStat(table, 'ID', '');
+				linkHash(doms[2], payouts[i].id);
+				doms = appendStat(table, 'Payout Address', '');
+				linkHash(doms[2], payouts[i].unlockhash);
+				appendStat(table, 'Value', readableCoins(payouts[i].paidvalue) + ' of a total payout of ' + readableCoins(payouts[i].value));
+				infoBody.appendChild(table);
+			}
+		}
+	}
+}
+
+function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
+	var ctx = getBlockchainContext();
+
+	var table = createStatsTable();
+	appendStatHeader(table, 'Burn Transaction Statistics');
+	if (confirmed) {
+		var doms = appendStat(table, 'Block Height', '');
+		linkHeight(doms[2], explorerTransaction.height);
+		doms = appendStat(table, 'Block ID', '');
+		linkHash(doms[2], explorerTransaction.parent);
+		appendStat(table, 'Confirmations', ctx.height - explorerTransaction.height + 1);
+	} else {
+		doms = appendStat(table, 'Block Height', 'unconfirmed');
+	}
+	doms = appendStat(table, 'ID', '');
+	linkHash(doms[2], explorerTransaction.id);
+	if (explorerTransaction.rawtransaction.data.coininputs != null && explorerTransaction.rawtransaction.data.coininputs.length > 0) {
+		appendStat(table, 'Coin Input Count', explorerTransaction.rawtransaction.data.coininputs.length);
+	}
+	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
+		appendStat(table, 'Arbitrary Data Byte Count',  decodeBase64ArrayBuffer(explorerTransaction.rawtransaction.data.arbitrarydata).length);
+	}
+	infoBody.appendChild(table);
+
+	// Add tables for each type of transaction element.
+	if (explorerTransaction.rawtransaction.data.coininputs != null
+		&& explorerTransaction.rawtransaction.data.coininputs.length > 0) {
+
+		appendStatTableTitle(infoBody, 'Coin Inputs');
+		for (var i = 0; i < explorerTransaction.rawtransaction.data.coininputs.length; i++) {
+			var f;
+			switch (explorerTransaction.rawtransaction.data.coininputs[i].fulfillment.type) {
+				case 0:
+					break;
+				case 1:
+					f = addV1T1Input;
+					break;
+				case 2:
+					f = addV1T2Input;
+					break;
+				case 3:
+					f = addV1T3Input;
+					break;
+				default:
+					continue;
+			}
+			f(infoBody, explorerTransaction, i, 'coins');
+		}
+	}
+	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
+		appendStatTableTitle(infoBody, 'Arbitrary Data');
+		var table = createStatsTable();
+		appendStat(table, 'data', arbitraryDataToString(explorerTransaction.rawtransaction.data.arbitrarydata));
+		infoBody.appendChild(table);
+	}
 	if (confirmed) {
 		var payouts = getMinerFeesAsFeePayouts(explorerTransaction.id, explorerTransaction.parent);
 		if (payouts != null) {
@@ -2130,14 +2206,14 @@ function fetchHashInfo(hash) {
 // fetchCurrentAddressAuthStatus queries the explorer for auth status info at the current block height
 function fetchCurrentAddressAuthStatus(address) {
 	var request = new XMLHttpRequest();
-	var reqString = '/explorer/authcoin/address/' + address;
+	var reqString = '/explorer/authcoin/status?addr=' + address;
 	request.open('GET', reqString, false);
 	request.send();
 	if (request.status != 200) {
 		return 'error';
 	}
 	resp = JSON.parse(request.responseText) || {};
-	return resp.auth || false;
+	return (resp.auths && resp.auths.length === 1 && resp.auths[0]) || false;
 }
 
 // parseHashQuery parses the query string in the URL and loads the block

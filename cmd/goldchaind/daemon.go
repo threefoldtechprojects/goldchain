@@ -135,6 +135,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				setupNetworkCfg.GenesisAuthCondition,
 				goldchaintypes.TransactionVersionAuthAddressUpdateTx,
 				goldchaintypes.TransactionVersionAuthConditionUpdateTx,
+				nil, // no custom opts
 			)
 			err = cs.RegisterPlugin(ctx, "authcointx", authCoinTxPlugin)
 			if err != nil {

@@ -1,5 +1,5 @@
 [[constraint]]
-  branch = "feat/tx-validation-v2"
+  branch = "master"
   name = "github.com/threefoldtech/rivine"
 
 [prune]

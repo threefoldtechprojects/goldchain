@@ -106,7 +106,7 @@
   version = "v1.0.3"
 
 [[projects]]
-  branch = "feat/tx-validation-v2"
+  branch = "master"
   digest = "1:1e039ce312441775d153196b440e1ad2692c9fde04f85d69af6c119139a35359"
   name = "github.com/threefoldtech/rivine"
   packages = [
@@ -136,7 +136,7 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "36151dccd7cd686caa9d3bba1224d9377d5158eb"
+  revision = "47d7daa3ab9e07266ad8352a0ff71783bf98903a"
 
 [[projects]]
   branch = "master"

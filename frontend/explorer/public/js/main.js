@@ -499,6 +499,27 @@ function uint8ArrayToHexString(uarray) {
 	return '0x' + uarray.map(x => ('00' + x.toString(16)).slice(-2)).join('')
 }
 
+function structuredDataToString(data) {
+	p0 = numberToString(uint16LittleEndianBytesToString(data.slice(0, 2)));
+	p1 = numberToString(uint16LittleEndianBytesToString(data.slice(2, 4)));
+	p2 = numberToString(uint24LittleEndianBytesToString(data.slice(4)));
+	return '+++' + p0 + '/' + p1 + '/' + p2 + '+++';
+}
+
+function numberToString(x, length) {
+	s = x.toString();
+	while (s.length < length) s = '0' + s;
+	return s;
+}
+
+function uint16LittleEndianBytesToString(bs) {
+	return bs[0] | (bs[1] << 8);
+}
+
+function uint24LittleEndianBytesToString(bs) {
+	return bs[0] | (bs[1] << 8) | (bs[2] << 16);
+}
+
 function arbitraryDataToString(arbitrarydata) {
 	const arbitraryDecoded = decodeBase64ArrayBuffer(arbitrarydata);
 	if (arbitraryDecoded.length < 9) {
@@ -508,6 +529,9 @@ function arbitraryDataToString(arbitrarydata) {
 	// skip checksum validation as we do not have a blake2b lib available here
 	let type = Number(arbitraryDecoded[6]);
 	if (type !== 1) {
+		if (type === 2) {
+			return structuredDataToString(arbitraryDecoded.slice(7))
+		}
 		return uint8ArrayToHexString(arbitraryDecoded)
 	}
 

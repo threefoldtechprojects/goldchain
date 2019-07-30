@@ -552,10 +552,15 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 	if (explorerTransaction.rawtransaction.data.coininputs != null && explorerTransaction.rawtransaction.data.coininputs.length > 0) {
 		appendStat(table, 'Coin Input Count', explorerTransaction.rawtransaction.data.coininputs.length);
 	}
+	if (explorerTransaction.rawtransaction.data.refundcoinoutput != null) {
+		appendStat(table, 'Refund Coin Output', 'yes');
+	}
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
 		appendStat(table, 'Arbitrary Data Byte Count',  decodeBase64ArrayBuffer(explorerTransaction.rawtransaction.data.arbitrarydata).length);
 	}
 	infoBody.appendChild(table);
+
+	var coinsBurnedAmount = 0;
 
 	// Add tables for each type of transaction element.
 	if (explorerTransaction.rawtransaction.data.coininputs != null
@@ -564,6 +569,7 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 		appendStatTableTitle(infoBody, 'Coin Inputs');
 		for (var i = 0; i < explorerTransaction.rawtransaction.data.coininputs.length; i++) {
 			var f;
+			var cir;
 			switch (explorerTransaction.rawtransaction.data.coininputs[i].fulfillment.type) {
 				case 0:
 					break;
@@ -579,7 +585,39 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 				default:
 					continue;
 			}
-			f(infoBody, explorerTransaction, i, 'coins');
+			cir = f(infoBody, explorerTransaction, i, 'coins');
+			coinsBurnedAmount += +cir.amount;
+		}
+	}
+	var refundcoinoutput = explorerTransaction.rawtransaction.data.refundcoinoutput;
+	if (refundcoinoutput != null) {
+		appendStatTableTitle(infoBody, 'Refund Coin Output');
+		var f;
+		var cor;
+		switch (refundcoinoutput.condition.type) {
+			// handle nil transactions
+			case undefined:
+			case 0:
+				f = addV1NilOutput;
+				break;
+			case 1:
+				f = addV1T1Output;
+				break;
+			case 2:
+				f = addV1T2Output;
+				break;
+			case 3:
+				f = addV1T3Output;
+				break;
+			case 4:
+				f = addV1T4Output;
+				break;
+		}
+		if (f !== null) {
+			var outputTable = createStatsTable()
+			cor = f(ctx, outputTable, explorerTransaction, 0, 'coins', [refundcoinoutput]);
+			infoBody.appendChild(outputTable)
+			coinsBurnedAmount -= +cor.value;
 		}
 	}
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
@@ -588,6 +626,14 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 		appendStat(table, 'data', arbitraryDataToString(explorerTransaction.rawtransaction.data.arbitrarydata));
 		infoBody.appendChild(table);
 	}
+	if (explorerTransaction.rawtransaction.data.minerfees != null && explorerTransaction.rawtransaction.data.minerfees.length > 0) {
+		for(var i = 0; i < explorerTransaction.rawtransaction.data.minerfees.length; i++) {
+			coinsBurnedAmount -= +explorerTransaction.rawtransaction.data.minerfees[i]
+		}
+	}
+	appendStatTableTitle(infoBody, 'Coins Burned');
+	var CoinsBurnedTable = createStatsTable();
+	infoBody.appendChild(CoinsBurnedTable);
 	if (confirmed) {
 		var payouts = getMinerFeesAsFeePayouts(explorerTransaction.id, explorerTransaction.parent);
 		if (payouts != null) {
@@ -604,6 +650,7 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 			}
 		}
 	}
+	appendStat(CoinsBurnedTable, 'Value', readableCoins(coinsBurnedAmount));
 }
 
 function appendV176Transaction(infoBody, explorerTransaction, confirmed) {
@@ -792,6 +839,7 @@ function addV1T1Input(infoBody, explorerTransaction, i, type) {
 	appendStatHeader(table, 'Fulfillment');
 	addV1Fulfillment(table, explorerTransaction.rawtransaction.data[inputspecifier][i].fulfillment)
 	infoBody.appendChild(table);
+	return {amount: explorerTransaction[inputoutputspecifier][i].value};
 }
 
 function addV1Fulfillment(table, fulfillment) {
@@ -828,6 +876,8 @@ function addV1T2Input(infoBody, explorerTransaction, i, type) {
 	appendStatHeader(table, 'Fulfillment');
 	addV2Fulfillment(table, explorerTransaction.rawtransaction.data[inputspecifier][i].fulfillment);
 	infoBody.appendChild(table);
+
+	return {amount: explorerTransaction[inputoutputspecifier][i].value};
 }
 
 function addV2Fulfillment(table, fulfillment) {
@@ -874,6 +924,8 @@ function addV1T3Input(infoBody, explorerTransaction, i, type) {
 	appendStatHeader(table, 'Fulfillment');
 	addV3Fulfillment(table, explorerTransaction.rawtransaction.data[inputspecifier][i].rawInput.fulfillment)
 	infoBody.appendChild(table);
+
+	return {amount: explorerTransaction[inputoutputspecifier][i].value};
 }
 
 function addV3Fulfillment(table, fulfillment) {
@@ -1979,7 +2031,9 @@ function getCoinOutputsFromExplorerTransaction(txn) {
 	if (txn.rawtransaction.data && txn.rawtransaction.data.coinoutputs) {
 		return txn.rawtransaction.data.coinoutputs;
 	}
-	var version = txn.rawtransaction.version;
+	if (txn.rawtransaction.version == 130) {
+		return [txn.rawtransaction.data.refundcoinoutput];
+	}
 	return [];
 }
 

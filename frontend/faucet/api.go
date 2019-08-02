@@ -9,6 +9,13 @@ import (
 )
 
 func (f *faucet) requestCoins(w http.ResponseWriter, r *http.Request) {
+	addCorsHeaders(w)
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -47,6 +54,13 @@ func (f *faucet) requestCoins(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *faucet) requestAuthorization(w http.ResponseWriter, r *http.Request) {
+	addCorsHeaders(w)
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -78,6 +92,13 @@ func (f *faucet) requestAuthorization(w http.ResponseWriter, r *http.Request) {
 }
 
 func (f *faucet) requestDeauthorization(w http.ResponseWriter, r *http.Request) {
+	addCorsHeaders(w)
+
+	if r.Method == http.MethodOptions {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -106,4 +127,10 @@ func (f *faucet) requestDeauthorization(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(struct {
 		TxID types.TransactionID `json:"txid"`
 	}{TxID: txID})
+}
+
+func addCorsHeaders(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
 }

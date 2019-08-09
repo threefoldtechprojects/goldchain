@@ -1,17 +1,15 @@
 package main
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/threefoldtech/rivine/pkg/client"
 )
 
-// CommandLineClient extend for ERC20 commands
+// CommandLineClient can be used to extend it with other commands
 type CommandLineClient struct {
 	*client.CommandLineClient
-
-	ERC20Cmd *cobra.Command
 }
 
+//NewCommandLineClient creates a new goldchain commandline client
 func NewCommandLineClient(address, name, userAgent string) (*CommandLineClient, error) {
 	client, err := client.NewCommandLineClient(address, name, userAgent)
 	if err != nil {

@@ -40,7 +40,6 @@ func (f *faucet) requestCoins(w http.ResponseWriter, r *http.Request) {
 
 	var txID types.TransactionID
 	if body.Amount.IsZero() {
-		log.Printf("no amount is provided so im using default amount")
 		txID, err = dripCoins(body.Address, f.coinsToGive)
 	} else {
 		// If there is an amount requested, use the provided amount

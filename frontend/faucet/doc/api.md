@@ -15,7 +15,8 @@ data:
 
 ```json
 {
-	"address": "UnlockHash string"
+	"address": "UnlockHash string",
+	"amount": "Amount of tokens | optional (default 300)"
 }
 ```
 

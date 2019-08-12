@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/nbh-digital/goldchain/pkg/config"
 	"github.com/threefoldtech/rivine/types"
 )
 
@@ -23,6 +24,7 @@ func (f *faucet) requestCoins(w http.ResponseWriter, r *http.Request) {
 
 	body := struct {
 		Address types.UnlockHash `json:"address"`
+		Amount  types.Currency   `json:"amount"`
 	}{}
 
 	err := json.NewDecoder(r.Body).Decode(&body)
@@ -35,7 +37,16 @@ func (f *faucet) requestCoins(w http.ResponseWriter, r *http.Request) {
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	txID, err := dripCoins(body.Address, f.coinsToGive)
+
+	var txID types.TransactionID
+	if body.Amount.IsZero() {
+		log.Printf("no amount is provided so im using default amount")
+		txID, err = dripCoins(body.Address, f.coinsToGive)
+	} else {
+		// If there is an amount requested, use the provided amount
+		amount, _ := body.Amount.Uint64()
+		txID, err = dripCoins(body.Address, config.GetTestnetGenesis().CurrencyUnits.OneCoin.Mul64(amount))
+	}
 
 	if err != nil {
 		log.Println("[ERROR] Failed to drip coins:", err)

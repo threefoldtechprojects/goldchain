@@ -24,7 +24,7 @@ func (f *faucet) requestCoins(w http.ResponseWriter, r *http.Request) {
 
 	body := struct {
 		Address types.UnlockHash `json:"address"`
-		Amount  types.Currency   `json:"amount"`
+		Amount  uint64           `json:"amount"`
 	}{}
 
 	err := json.NewDecoder(r.Body).Decode(&body)
@@ -39,12 +39,11 @@ func (f *faucet) requestCoins(w http.ResponseWriter, r *http.Request) {
 	defer f.mu.Unlock()
 
 	var txID types.TransactionID
-	if body.Amount.IsZero() {
+	if body.Amount == 0 {
 		txID, err = dripCoins(body.Address, f.coinsToGive)
 	} else {
 		// If there is an amount requested, use the provided amount
-		amount, _ := body.Amount.Uint64()
-		txID, err = dripCoins(body.Address, config.GetTestnetGenesis().CurrencyUnits.OneCoin.Mul64(amount))
+		txID, err = dripCoins(body.Address, config.GetTestnetGenesis().CurrencyUnits.OneCoin.Mul64(body.Amount))
 	}
 
 	if err != nil {

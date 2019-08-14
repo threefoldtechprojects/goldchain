@@ -154,7 +154,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				return
 			}
 			// add the HTTP handlers for the auth coin tx extension as well
-			authcointxapi.RegisterConsensusuthCoinHTTPHandlers(router, authCoinTxPlugin)
+			authcointxapi.RegisterConsensusAuthCoinHTTPHandlers(router, authCoinTxPlugin)
 
 			// register the minting extension plugin
 			mintingPlugin = minting.NewMintingPlugin(

@@ -25,6 +25,7 @@ func main() {
 
 	// register goldchain-specific explorer commands
 	mintingcli.CreateExploreCmd(cliClient.CommandLineClient)
+	mintingcli.CreateConsensusCmd(cliClient.CommandLineClient)
 	authcointxcli.CreateExploreAuthCoinInfoCmd(cliClient.CommandLineClient)
 
 	// add cli wallet extension commands

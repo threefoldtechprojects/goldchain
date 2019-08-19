@@ -75,6 +75,7 @@ var coinConfirmationTemplate = mustTemplate("coinconfirmation.html", fmt.Sprintf
 		<h1>%d {{.CoinUnit}} succesfully transferred on {{.ChainName}}'s {{.ChainNetwork}} to {{.Address}}</h1>
 		<p>You can look up the transaction using the following ID:</p>
 		<div><code>{{.TransactionID}}</code></div>
+		<p><a href="/">Return to the homepage</a></p>
 		<div style="margin-top:50px;"><small>{{.ChainName}} faucet v%s</small></div>
 	</div>
 </body>
@@ -99,6 +100,7 @@ var authorizationConfirmationTemplate = mustTemplate("authorizationconfirmation.
 		<h1>Succesfully {{.Action}} address {{.Address}} on {{.ChainName}}'s {{.ChainNetwork}}</h1>
 		<p>You can look up the transaction using the following ID:</p>
 		<div><code>{{.TransactionID}}</code></div>
+		<p><a href="/">Return to the homepage</a></p>
 		<div style="margin-top:50px;"><small>{{.ChainName}} faucet v%s</small></div>
 	</div>
 </body>

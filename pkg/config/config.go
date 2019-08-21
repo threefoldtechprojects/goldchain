@@ -285,11 +285,11 @@ func GetStandardnetGenesisAuthCoinCondition() types.UnlockConditionProxy {
 // GetStandardnetBootstrapPeers sets the standard bootstrap node addresses
 func GetStandardnetBootstrapPeers() []modules.NetAddress {
 	return []modules.NetAddress{
-		"bootstrap1.goldtoken.bnh.com:22112",
-		"bootstrap2.goldtoken.bnh.com:22112",
-		"bootstrap3.goldtoken.bnh.com:22112",
-		"bootstrap4.goldtoken.bnh.com:22112",
-		"bootstrap5.goldtoken.bnh.com:22112",
+		"bootstrap1.nbh-digital.com:22112",
+		"bootstrap2.nbh-digital.com:22112",
+		"bootstrap3.nbh-digital.com:22112",
+		"bootstrap4.nbh-digital.com:22112",
+		"bootstrap5.nbh-digital.com:22112",
 	}
 }
 

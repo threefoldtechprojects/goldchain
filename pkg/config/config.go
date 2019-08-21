@@ -25,6 +25,24 @@ const (
 	GoldchainTokenChainName = "goldchain"
 )
 
+// Transaction pool size limits
+const (
+	// TransactionSizeLimit is the maximum size of a single transactions when it is
+	// encoded
+	TransactionSizeLimit = 16e3
+	// TransactionSetSizeLimit is the maximum size of a single transaction set
+	// when it is encoded
+	//
+	// Transaction sets are deprecated and only maintained to support legacy code
+	// in rivine, but will likely be removed later
+	TransactionSetSizeLimit = 250e3
+	// PoolSizeLimit is the maximum size of all encoded transactions in the
+	// transaction pool at a given time. By default, rivine defines a smaller
+	// PoolSizeLimit than BlockSizeLimit, which means that we would never be
+	// able to fill our blocks to the maximum size.
+	PoolSizeLimit = 2e7
+)
+
 // chain names
 const (
 	NetworkNameStandard = "standard"
@@ -108,6 +126,13 @@ func GetStandardnetGenesis() types.ChainConstants {
 		},
 	}
 
+	// set txpool size
+	cfg.TransactionPool = types.TransactionPoolConstants{
+		TransactionSizeLimit:    TransactionSizeLimit,
+		TransactionSetSizeLimit: TransactionSetSizeLimit,
+		PoolSizeLimit:           PoolSizeLimit,
+	}
+
 	return cfg
 }
 
@@ -166,6 +191,13 @@ func GetTestnetGenesis() types.ChainConstants {
 			// @leesmet
 			Condition: types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f"))),
 		},
+	}
+
+	// set txpool size
+	cfg.TransactionPool = types.TransactionPoolConstants{
+		TransactionSizeLimit:    TransactionSizeLimit,
+		TransactionSetSizeLimit: TransactionSetSizeLimit,
+		PoolSizeLimit:           PoolSizeLimit,
 	}
 
 	return cfg
@@ -232,6 +264,13 @@ func GetDevnetGenesis() types.ChainConstants {
 			// carbon boss inject cover mountain fetch fiber fit tornado cloth wing dinosaur proof joy intact fabric thumb rebel borrow poet chair network expire else
 			Condition: types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f"))),
 		},
+	}
+
+	// set txpool size
+	cfg.TransactionPool = types.TransactionPoolConstants{
+		TransactionSizeLimit:    TransactionSizeLimit,
+		TransactionSetSizeLimit: TransactionSetSizeLimit,
+		PoolSizeLimit:           PoolSizeLimit,
 	}
 
 	return cfg

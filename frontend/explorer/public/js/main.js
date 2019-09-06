@@ -13,7 +13,7 @@ function formatUnixTime(unixTime) {
 
 // toTitleCase capitalizes the first letter of every word in the input string
 function toTitleCase(str) {
-    return str.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
+	return str.replace(/\w\S*/g, function(txt){return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();});
 }
 
 // readableCoins converts a number of hastings into a more readable volume of
@@ -127,7 +127,7 @@ function appendNavigationElements(element, explorerBlock) {
 	var previousButton = document.createElement('button');
 	var nextButton = document.createElement('button');
 	var searchButton = document.createElement('button');
-	var searchField = document.createElement('INPUT'); 
+	var searchField = document.createElement('INPUT');
 
 	//add ID's to elements
 	buttonContainer.id = 'navigation-buttons-container';
@@ -387,17 +387,21 @@ function txVersionName(version) {
 		case 1:
 			return "Regular Transaction";
 
+		
 		case 128:
 			return "Minter Definition";
 		case 129:
-			return "Coin Creation";
+			return "Coin Creation"; 
 		case 130:
 			return "Burn Transaction";
+		
 
+		
 		case 176:
 			return "Address Authentication Update";
 		case 177:
 			return "Auth Condition Update";
+		
 
 		default:
 			return "Unknown";
@@ -473,6 +477,7 @@ function getBlockchainConstants() {
 	return JSON.parse(request.responseText);
 }
 
+
 //Changes the document title according to the network the page is running on
 function buildPageTitle() {
 	var networkName = getBlockchainConstants().chaininfo.NetworkName;
@@ -492,8 +497,6 @@ function buildPageTitle() {
 			break;
 	}
 }
-
-
 
 function uint8ArrayToHexString(uarray) {
 	return '0x' + uarray.map(x => ('00' + x.toString(16)).slice(-2)).join('')
@@ -572,11 +575,11 @@ Copyright (c) 2011, Daniel Guerrero
 All rights reserved.
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
-    * Redistributions of source code must retain the above copyright
-      notice, this list of conditions and the following disclaimer.
-    * Redistributions in binary form must reproduce the above copyright
-      notice, this list of conditions and the following disclaimer in the
-      documentation and/or other materials provided with the distribution.
+	* Redistributions of source code must retain the above copyright
+	  notice, this list of conditions and the following disclaimer.
+	* Redistributions in binary form must reproduce the above copyright
+	  notice, this list of conditions and the following disclaimer in the
+	  documentation and/or other materials provided with the distribution.
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE

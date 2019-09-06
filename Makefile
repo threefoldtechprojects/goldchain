@@ -27,6 +27,10 @@ test: fmt vet
 fmt:
 	gofmt -s -l -w $(pkgs)
 
+generate:
+	rivinecg generate blockchain
+	dep ensure -v -update
+
 # vet calls go vet on all packages.
 # NOTE: go vet requires packages to be built in order to obtain type info.
 vet: install-std
@@ -81,4 +85,4 @@ check-%:
 		exit 1; \
 	fi
 
-.PHONY: all test fmt vet install install-std embed-explorer-version explorer release-explorer release-flist archive release-dir get_hub_jwt check-%
+.PHONY: all test fmt generate vet install install-std embed-explorer-version explorer release-explorer release-flist archive release-dir get_hub_jwt check-%

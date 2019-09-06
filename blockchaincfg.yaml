@@ -1,0 +1,118 @@
+template:
+  repository:
+    owner: threefoldtech
+    repo: rivine-chain-template
+  version: master
+frontend:
+  caddy:
+    dns: explorer.testnet.nbh-digital.com
+    tls: support@nbh-digital.com
+generation:
+  ignore:
+    - .gitignore
+    - Makefile
+    - README.md
+    - LICENSE
+    - docs/*
+    - frontend/explorer/public/assets/icon.{png,ico}
+    - frontend/explorer/public/assets/mention.txt
+    - frontend/faucet/*
+blockchain:
+  name: goldchain
+  longName: GoldChain
+  version: v0.2
+  repository: github.com/nbh-digital/goldchain
+  currency:
+    unit: GFT
+    precision: 9
+  ports:
+    api: 22110
+    rpc: 22112
+  binaries:
+    client: goldchainc
+    daemon: goldchaind
+  transactions:
+    default:
+      version: 1
+    minting:
+      conditionUpdate:
+        version: 128
+      coinCreation:
+        version: 129
+      coinDestruction:
+        version: 130
+    authcoin:
+      addressUpdate:
+        version: 176
+      conditionUpdate:
+        version: 177
+  networks:
+    testnet:
+      networkType: 2
+      genesis:
+        coinOutputs:
+        - value: "100000000"
+          condition: 01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f
+        blockStakeOutputs:
+        - value: "3000"
+          condition: 01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f
+        minting: 01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f
+        authcoin: 01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f
+        genesisBlockTimestamp: 1564142400
+      blockSizeLimit: 2000000
+      arbitraryDataSizeLimit: 83
+      blockCreatorFee: "0.0"
+      minimumTransactionFee: "0.001"
+      blockFrequency: 120
+      maturityDelay: 720
+      medianTimestampWindow: 11
+      targetWindow: 1000
+      maxAdjustmentUp: 25/10
+      maxAdjustmentDown: 10/25
+      futureTreshold: 3600
+      extremeFutureTreshold: 7200
+      stakeModifierDelay: 2000
+      blockStakeAging: 64
+      transactionPool:
+        transactionSizeLimit: 16000
+        transactionSetSizeLimit: 250000
+        poolSizeLimit: 20000000
+      bootstrapPeers:
+      - bootstrap1.testnet.nbh-digital.com:22112
+      - bootstrap2.testnet.nbh-digital.com:22112
+      - bootstrap3.testnet.nbh-digital.com:22112
+      - bootstrap4.testnet.nbh-digital.com:22112
+      - bootstrap5.testnet.nbh-digital.com:22112
+    devnet:
+      networkType: 3
+      genesis:
+        coinOutputs:
+        - value: "100000000"
+          condition: 015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f
+        blockStakeOutputs:
+        - value: "3000"
+          condition: 015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f
+        minting: 015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f
+        authcoin: 015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f
+        genesisBlockTimestamp: 1519200000
+      transactionFeePool: 015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f
+      blockSizeLimit: 2000000
+      arbitraryDataSizeLimit: 83
+      blockCreatorFee: "10"
+      minimumTransactionFee: "1"
+      blockFrequency: 12
+      maturityDelay: 10
+      medianTimestampWindow: 11
+      targetWindow: 20
+      maxAdjustmentUp: 120/100
+      maxAdjustmentDown: 100/120
+      futureTreshold: 120
+      extremeFutureTreshold: 240
+      stakeModifierDelay: 2000
+      blockStakeAging: 64
+      transactionPool:
+        transactionSizeLimit: 16000
+        transactionSetSizeLimit: 250000
+        poolSizeLimit: 20000000
+      bootstrapPeers:
+      - localhost:23112

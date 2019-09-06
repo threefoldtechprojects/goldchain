@@ -8,9 +8,11 @@ import (
 	"github.com/threefoldtech/rivine/pkg/daemon"
 
 	"github.com/nbh-digital/goldchain/pkg/config"
+
 	"github.com/nbh-digital/goldchain/pkg/types"
 	authcointxcli "github.com/threefoldtech/rivine/extensions/authcointx/client"
 	mintingcli "github.com/threefoldtech/rivine/extensions/minting/client"
+
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/pkg/client"
 )
@@ -26,49 +28,43 @@ func main() {
 	// register goldchain-specific explorer commands
 	mintingcli.CreateExploreCmd(cliClient.CommandLineClient)
 	mintingcli.CreateConsensusCmd(cliClient.CommandLineClient)
-	authcointxcli.CreateExploreAuthCoinInfoCmd(cliClient.CommandLineClient)
 
 	// add cli wallet extension commands
 	mintingcli.CreateWalletCmds(
 		cliClient.CommandLineClient,
-		types.MinterDefinitionTxVersion,
-		types.CoinCreationTxVersion,
+		types.TransactionVersionMinterDefinition,
+		types.TransactionVersionCoinCreation,
 		&mintingcli.WalletCmdsOpts{
-			CoinDestructionTxVersion: types.CoinDestructionTxVersion,
+			CoinDestructionTxVersion: types.TransactionVersionCoinDestruction,
 		},
 	)
+
+	authcointxcli.CreateExploreAuthCoinInfoCmd(cliClient.CommandLineClient)
 	authcointxcli.CreateWalletCmds(
 		cliClient.CommandLineClient,
-		types.TransactionVersionAuthConditionUpdateTx,
-		types.TransactionVersionAuthAddressUpdateTx,
+		types.TransactionVersionAuthConditionUpdate,
+		types.TransactionVersionAuthAddressUpdate,
 	)
 
 	// define preRun function
 	cliClient.PreRunE = func(cfg *client.Config) (*client.Config, error) {
 		if cfg == nil {
 			bchainInfo := config.GetBlockchainInfo()
-			chainConstants := config.GetStandardnetGenesis()
+			chainConstants := config.GetDefaultGenesis()
 			daemonConstants := modules.NewDaemonConstants(bchainInfo, chainConstants)
 			newCfg := client.ConfigFromDaemonConstants(daemonConstants)
 			cfg = &newCfg
 		}
 
 		switch cfg.NetworkName {
-		case config.NetworkNameStandard:
-			RegisterStandardTransactions(cliClient.CommandLineClient)
 
-			// overwrite standard network genesis block stamp,
-			// as the genesis block is way earlier than the actual first block,
-			// due to the hard reset at the bumpy/rough start
-			cfg.GenesisBlockTimestamp = 1524168391 // timestamp of (standard) block #1
-
-		case config.NetworkNameTest:
-			RegisterTestnetTransactions(cliClient.CommandLineClient)
-
-			cfg.GenesisBlockTimestamp = 1564142400 // timestamp of (testnet) block #1
-
-		case config.NetworkNameDev:
+		case config.NetworkNameDevnet:
 			RegisterDevnetTransactions(cliClient.CommandLineClient)
+			cfg.GenesisBlockTimestamp = 1519200000 // timestamp of block #1
+
+		case config.NetworkNameTestnet:
+			RegisterTestnetTransactions(cliClient.CommandLineClient)
+			cfg.GenesisBlockTimestamp = 1564142400 // timestamp of block #1
 
 		default:
 			return nil, fmt.Errorf("Network name %q not recognized", cfg.NetworkName)

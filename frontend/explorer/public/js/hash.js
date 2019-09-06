@@ -8,23 +8,30 @@ function appendTransactionStatistics(infoBody, explorerTransaction, confirmed) {
 			// standard coin transactions
 			appendV1Transaction(infoBody, explorerTransaction, confirmed);
 			break;
-		// minting transactions
-		case 128: // minter definition
+
+		
+		// Minting Transactions
+		case 128: // Condition Update Tx
 			appendV128Transaction(infoBody, explorerTransaction, confirmed);
 			break;
-		case 129: // coin creation
+		case 129: // Coin Creation Tx
 			appendV129Transaction(infoBody, explorerTransaction, confirmed);
 			break;
-		case 130: // burn transaction
+		case 130: // Optional Coin Destruction Tx
 			appendV130Transaction(infoBody, explorerTransaction, confirmed);
 			break;
-		// auth coin transactions
-		case 176: // address update
+		
+
+		
+		// AuthCoin Transactions
+		case 176: // Address Update Tx
 			appendV176Transaction(infoBody, explorerTransaction, confirmed);
 			break;
-		case 177: // condition update
+		case 177: // Condition Update Tx
 			appendV177Transaction(infoBody, explorerTransaction, confirmed);
 			break;
+		
+
 		default:
 			appendUnknownTransaction(infoBody, explorerTransaction, confirmed)
 	}
@@ -345,6 +352,8 @@ function appendV1Transaction(infoBody, explorerTransaction, confirmed) {
 	}
 }
 
+// Minting Transactions
+
 function appendV128Transaction(infoBody, explorerTransaction, confirmed) {
 	var ctx = getBlockchainContext();
 
@@ -652,6 +661,9 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 	}
 	appendStat(CoinsBurnedTable, 'Value', readableCoins(coinsBurnedAmount));
 }
+ 
+
+// Auth Coin Transactions
 
 function appendV176Transaction(infoBody, explorerTransaction, confirmed) {
 	var ctx = getBlockchainContext();
@@ -670,7 +682,7 @@ function appendV176Transaction(infoBody, explorerTransaction, confirmed) {
 	doms = appendStat(table, 'ID', '');
 	linkHash(doms[2], explorerTransaction.id);
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
-		appendStat(table, 'Arbitrary Data Byte Count',  b64DecodeUnicode(explorerTransaction.rawtransaction.data.arbitrarydata).length);
+		appendStat(table, 'Arbitrary Data Byte Count',  decodeBase64ArrayBuffer(explorerTransaction.rawtransaction.data.arbitrarydata).length);
 	}
 	infoBody.appendChild(table);
 
@@ -724,7 +736,7 @@ function appendV176Transaction(infoBody, explorerTransaction, confirmed) {
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
 		appendStatTableTitle(infoBody, 'Arbitrary Data');
 		var table = createStatsTable();
-		appendStat(table, 'Base64-encoded Data', explorerTransaction.rawtransaction.data.arbitrarydata);
+		appendStat(table, 'data', arbitraryDataToString(explorerTransaction.rawtransaction.data.arbitrarydata));
 		infoBody.appendChild(table);
 	}
 }
@@ -746,7 +758,7 @@ function appendV177Transaction(infoBody, explorerTransaction, confirmed) {
 	doms = appendStat(table, 'ID', '');
 	linkHash(doms[2], explorerTransaction.id);
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
-		appendStat(table, 'Arbitrary Data Byte Count',  b64DecodeUnicode(explorerTransaction.rawtransaction.data.arbitrarydata).length);
+		appendStat(table, 'Arbitrary Data Byte Count',  decodeBase64ArrayBuffer(explorerTransaction.rawtransaction.data.arbitrarydata).length);
 	}
 	infoBody.appendChild(table);
 
@@ -798,10 +810,11 @@ function appendV177Transaction(infoBody, explorerTransaction, confirmed) {
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
 		appendStatTableTitle(infoBody, 'Arbitrary Data');
 		var table = createStatsTable();
-		appendStat(table, 'Base64-encoded Data', explorerTransaction.rawtransaction.data.arbitrarydata);
+		appendStat(table, 'data', arbitraryDataToString(explorerTransaction.rawtransaction.data.arbitrarydata));
 		infoBody.appendChild(table);
 	}
 }
+
 
 // *************
 // * V1 Inputs *
@@ -839,6 +852,7 @@ function addV1T1Input(infoBody, explorerTransaction, i, type) {
 	appendStatHeader(table, 'Fulfillment');
 	addV1Fulfillment(table, explorerTransaction.rawtransaction.data[inputspecifier][i].fulfillment)
 	infoBody.appendChild(table);
+
 	return {amount: explorerTransaction[inputoutputspecifier][i].value};
 }
 
@@ -897,7 +911,6 @@ function addV1T3Input(infoBody, explorerTransaction, i, type) {
 
 	var doms = appendStat(table, 'ID', '');
 	linkHash(doms[2], explorerTransaction.rawtransaction.data[inputspecifier][i].parentid);
-
 
 	var amount = explorerTransaction[inputoutputspecifier][i].value;
 	if (type === 'coins') {
@@ -1416,10 +1429,6 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 		doms = appendStat(spendTable, 'Transaction ID', '');
 		linkHash(doms[2], lastSpendTxID);
 	}
-
-	// TODO: Compile the list of file contracts and revisions that use the
-	// unlock hash, and that have the unlock hash somewhere in the payout
-	// scheme.
 
 	// Compile a set of transactions that have siafund outputs featuring
 	// the hash, along with the corresponding siafund output ids. Later,
@@ -2030,8 +2039,7 @@ function populateHashPage(hash, explorerHash, hashTypeStr) {
 function getCoinOutputsFromExplorerTransaction(txn) {
 	if (txn.rawtransaction.data && txn.rawtransaction.data.coinoutputs) {
 		return txn.rawtransaction.data.coinoutputs;
-	}
-	if (txn.rawtransaction.version == 130) {
+	}if (txn.rawtransaction.version == 130) {
 		return [txn.rawtransaction.data.refundcoinoutput];
 	}
 	return [];
@@ -2269,6 +2277,7 @@ function fetchCurrentAddressAuthStatus(address) {
 	resp = JSON.parse(request.responseText) || {};
 	return (resp.auths && resp.auths.length === 1 && resp.auths[0]) || false;
 }
+
 
 // parseHashQuery parses the query string in the URL and loads the block
 // that makes sense based on the result.

@@ -1,15 +1,15 @@
 # Explorer
 
-A block explorer for  GoldChain
+A block explorer for GoldChain
 
 ## Run it yourself
 
 ### Prerequisites
 * Caddyserver
-* Goldchain daemon
+* GoldChain daemon (`goldchaind`)
 
 
-Make sure you have a goldchaind running with the explorer module enabled:
+Make sure you have `goldchaind` (the GoldChain daemon) running with the explorer module enabled:
 `goldchaind -M cgte`
 
 Now start caddy from the `caddy` folder of this repository:

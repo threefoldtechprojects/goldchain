@@ -21,7 +21,7 @@ function addOptionalFooter() {
 
 	var commitLink = document.createElement('a')
 	commitLink.textContent = version
-	commitLink.href = github.com/nbh-digital/goldchain + versionpath;
+	commitLink.href = "https://github.com/nbh-digital/goldchain" + versionpath;
 	versionParagraph.appendChild(commitLink);
 }
 addOptionalFooter();

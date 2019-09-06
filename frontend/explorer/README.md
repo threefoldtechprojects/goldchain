@@ -1,16 +1,16 @@
 # Explorer
 
-A block explorer for a Rivine-based chain
+A block explorer for GoldChain
 
 ## Run it yourself
 
 ### Prerequisites
 * Caddyserver
-* A Rivine-based daemon
+* GoldChain daemon (`goldchaind`)
 
 
-Make sure you have a Rivine-based daemon running with the explorer module enabled:
-`<rivine-based daemon cli name> -M cgte`
+Make sure you have `goldchaind` (the GoldChain daemon) running with the explorer module enabled:
+`goldchaind -M cgte`
 
 Now start caddy from the `caddy` folder of this repository:
 `caddy -conf Caddyfile.local`

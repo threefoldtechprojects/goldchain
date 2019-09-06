@@ -6,11 +6,11 @@ function addOptionalFooter() {
 		return;
 	}
 	var footer = document.getElementById('footer');
-	
+
 	var footerContentDiv = document.createElement('div');
 	footerContentDiv.id = 'footer-content';
 	footer.appendChild(footerContentDiv)
-	
+
 	var versionDiv = document.createElement('div');
 	versionDiv.id = 'version';
 	footerContentDiv.appendChild(versionDiv)

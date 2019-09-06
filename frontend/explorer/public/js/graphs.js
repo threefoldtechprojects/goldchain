@@ -73,7 +73,7 @@ function drawCharts(stats) {
 			continue
 		}
 		avgBlockTime -= stats.blocktimes[i - avgBlocks] / avgBlocks;
-		blockTime.push([stats.blockheights[i], stats.blocktimes[i], avgBlockTime]);        
+		blockTime.push([stats.blockheights[i], stats.blocktimes[i], avgBlockTime]);
 	}
 
 	// Collect linear stats
@@ -101,7 +101,7 @@ function drawCharts(stats) {
 		options: {explorer: {actions: ['dragToZoom', 'rightClickToReset'], keepInBounds: true, maxZoomIn: 0.01}, 'title': 'Chain Height', legend: {position: 'none'}, animation: {duration: 1000, easing: 'out', startup: true}},
 		containerId: 'height-graph'
 	});
-	heightWrapper.draw();    
+	heightWrapper.draw();
 
 	var creationTimeWrapper = new google.visualization.ChartWrapper({
 		chartType: 'LineChart',
@@ -157,7 +157,7 @@ function drawCharts(stats) {
 	});
 
 	google.visualization.events.addListener(creationTimeWrapper, 'select', (e) => {
-		var selection = creationTimeWrapper.getChart().getSelection()[0]; 
+		var selection = creationTimeWrapper.getChart().getSelection()[0];
 		// Index 0 are the labels
 		var row = selection.row + 1;
 		// block heights are in the column at index 1
@@ -172,7 +172,7 @@ function drawCharts(stats) {
 		// load it from another datatable. This should not be a problem
 		// as all datatables for line charts should have the same info if the
 		// primary index matches.
-		// 
+		//
 		// Index 0 are the labels
 		var row = selection.row + 1;
 		// Sanity check to see if the timestamp matches
@@ -187,7 +187,7 @@ function drawCharts(stats) {
 
 		var row = selection.row + 1;
 		var address = blockCreatorDistribution[row][0];
-		
+
 		hashDetailPage(address);
 	});
 

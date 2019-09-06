@@ -13,9 +13,9 @@ import (
 	"github.com/nbh-digital/goldchain/pkg/config"
 
 	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
-	"github.com/threefoldtech/rivine/types"
 	"github.com/threefoldtech/rivine/extensions/minting"
 	mintingapi "github.com/threefoldtech/rivine/extensions/minting/api"
+	"github.com/threefoldtech/rivine/types"
 
 	"github.com/threefoldtech/rivine/extensions/authcointx"
 	authcointxapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
@@ -111,7 +111,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 		}
 
 		var cs modules.ConsensusSet
-		var mintingPlugin    *minting.Plugin
+		var mintingPlugin *minting.Plugin
 		var authCoinTxPlugin *authcointx.Plugin
 
 		if moduleIdentifiers.Contains(daemon.ConsensusSetModule.Identifier()) {
@@ -138,7 +138,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				setupNetworkCfg.GenesisMintCondition,
 				goldchaintypes.TransactionVersionMinterDefinition,
 				goldchaintypes.TransactionVersionCoinCreation,
-			&minting.PluginOptions{
+				&minting.PluginOptions{
 					CoinDestructionTransactionVersion: goldchaintypes.TransactionVersionCoinDestruction,
 				},
 			)
@@ -155,7 +155,6 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			// add the HTTP handlers for the auth coin tx extension as well
 			mintingapi.RegisterConsensusMintingHTTPHandlers(router, mintingPlugin)
 
-			
 			// register the auth coin tx plugin
 			// > NOTE: this also overwrites the standard tx controllers!!!!
 			authCoinTxPlugin = authcointx.NewPlugin(
@@ -342,7 +341,7 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 	// return the network configuration, based on the network name,
 	// which includes the genesis block as well as the bootstrap peers
 	switch cfg.BlockchainInfo.NetworkName {
-	
+
 	case config.NetworkNameDevnet:
 		constants := config.GetDevnetGenesis()
 		bootstrapPeers := cfg.BootstrapPeers
@@ -358,7 +357,7 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 			GenesisMintCondition: config.GetDevnetGenesisMintCondition(),
 			GenesisAuthCondition: config.GetDevnetGenesisAuthCoinCondition(),
 		}, nil
-	
+
 	case config.NetworkNameTestnet:
 		constants := config.GetTestnetGenesis()
 		bootstrapPeers := cfg.BootstrapPeers
@@ -374,7 +373,6 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 			GenesisMintCondition: config.GetTestnetGenesisMintCondition(),
 			GenesisAuthCondition: config.GetTestnetGenesisAuthCoinCondition(),
 		}, nil
-	
 
 	default:
 		// network isn't recognised

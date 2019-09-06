@@ -10,8 +10,8 @@ import (
 	"github.com/nbh-digital/goldchain/pkg/config"
 
 	"github.com/nbh-digital/goldchain/pkg/types"
-	mintingcli "github.com/threefoldtech/rivine/extensions/minting/client"
 	authcointxcli "github.com/threefoldtech/rivine/extensions/authcointx/client"
+	mintingcli "github.com/threefoldtech/rivine/extensions/minting/client"
 
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/pkg/client"
@@ -57,15 +57,14 @@ func main() {
 		}
 
 		switch cfg.NetworkName {
-		
+
 		case config.NetworkNameDevnet:
 			RegisterDevnetTransactions(cliClient.CommandLineClient)
 			cfg.GenesisBlockTimestamp = 1519200000 // timestamp of block #1
-		
+
 		case config.NetworkNameTestnet:
 			RegisterTestnetTransactions(cliClient.CommandLineClient)
 			cfg.GenesisBlockTimestamp = 1564142400 // timestamp of block #1
-		
 
 		default:
 			return nil, fmt.Errorf("Network name %q not recognized", cfg.NetworkName)

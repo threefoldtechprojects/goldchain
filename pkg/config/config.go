@@ -4,8 +4,8 @@ import (
 	"math/big"
 
 	"github.com/threefoldtech/rivine/build"
-	"github.com/threefoldtech/rivine/types"
 	"github.com/threefoldtech/rivine/modules"
+	"github.com/threefoldtech/rivine/types"
 )
 
 var (
@@ -26,11 +26,9 @@ const (
 
 // chain network names
 const (
-	
 	NetworkNameDevnet = "devnet"
-	
+
 	NetworkNameTestnet = "testnet"
-	
 )
 
 func GetDefaultGenesis() types.ChainConstants {
@@ -85,10 +83,9 @@ func GetDevnetGenesis() types.ChainConstants {
 	cfg.BlockStakeAging = 64
 
 	// Coins you receive when you create a block
-	cfg.BlockCreatorFee = cfg.CurrencyUnits.OneCoin.Mul64(10)// Minimum transaction fee
+	cfg.BlockCreatorFee = cfg.CurrencyUnits.OneCoin.Mul64(10) // Minimum transaction fee
 	cfg.MinimumTransactionFee = cfg.CurrencyUnits.OneCoin.Mul64(1)
 	cfg.TransactionFeeCondition = types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f")))
-	
 
 	// Set Transaction Pool config
 	cfg.TransactionPool = types.TransactionPoolConstants{
@@ -98,18 +95,18 @@ func GetDevnetGenesis() types.ChainConstants {
 	}
 
 	// allocate initial coin outputs
-	cfg.GenesisCoinDistribution = []types.CoinOutput{ 
+	cfg.GenesisCoinDistribution = []types.CoinOutput{
 		{
-			Value: cfg.CurrencyUnits.OneCoin.Mul64(100000000),
+			Value:     cfg.CurrencyUnits.OneCoin.Mul64(100000000),
 			Condition: types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f"))),
 		},
 	}
 
 	// allocate initial block stake outputs
-	cfg.GenesisBlockStakeAllocation = []types.BlockStakeOutput{ 
+	cfg.GenesisBlockStakeAllocation = []types.BlockStakeOutput{
 		{
-		Value:     types.NewCurrency64(3000),
-		Condition: types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f"))),
+			Value:     types.NewCurrency64(3000),
+			Condition: types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f"))),
 		},
 	}
 
@@ -117,16 +114,18 @@ func GetDevnetGenesis() types.ChainConstants {
 }
 
 func GetDevnetBootstrapPeers() []modules.NetAddress {
-	return []modules.NetAddress{ 
+	return []modules.NetAddress{
 		"localhost:23112",
 	}
 }
 
 func GetDevnetGenesisMintCondition() types.UnlockConditionProxy {
-	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f")))}
+	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f")))
+}
 
 func GetDevnetGenesisAuthCoinCondition() types.UnlockConditionProxy {
-	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f")))}
+	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("015a080a9259b9d4aaa550e2156f49b1a79a64c7ea463d810d4493e8242e6791584fbdac553e6f")))
+}
 
 func GetTestnetGenesis() types.ChainConstants {
 	cfg := types.TestnetChainConstants()
@@ -165,7 +164,7 @@ func GetTestnetGenesis() types.ChainConstants {
 	cfg.BlockStakeAging = 64
 
 	// Coins you receive when you create a block
-	cfg.BlockCreatorFee = cfg.CurrencyUnits.OneCoin.Mul64(0)// Minimum transaction fee
+	cfg.BlockCreatorFee = cfg.CurrencyUnits.OneCoin.Mul64(0) // Minimum transaction fee
 	cfg.MinimumTransactionFee = cfg.CurrencyUnits.OneCoin.Mul64(001).Div64(1000)
 
 	// Set Transaction Pool config
@@ -176,18 +175,18 @@ func GetTestnetGenesis() types.ChainConstants {
 	}
 
 	// allocate initial coin outputs
-	cfg.GenesisCoinDistribution = []types.CoinOutput{ 
+	cfg.GenesisCoinDistribution = []types.CoinOutput{
 		{
-			Value: cfg.CurrencyUnits.OneCoin.Mul64(100000000),
+			Value:     cfg.CurrencyUnits.OneCoin.Mul64(100000000),
 			Condition: types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f"))),
 		},
 	}
 
 	// allocate initial block stake outputs
-	cfg.GenesisBlockStakeAllocation = []types.BlockStakeOutput{ 
+	cfg.GenesisBlockStakeAllocation = []types.BlockStakeOutput{
 		{
-		Value:     types.NewCurrency64(3000),
-		Condition: types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f"))),
+			Value:     types.NewCurrency64(3000),
+			Condition: types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f"))),
 		},
 	}
 
@@ -195,7 +194,7 @@ func GetTestnetGenesis() types.ChainConstants {
 }
 
 func GetTestnetBootstrapPeers() []modules.NetAddress {
-	return []modules.NetAddress{ 
+	return []modules.NetAddress{
 		"bootstrap1.testnet.nbh-digital.com:22112",
 		"bootstrap2.testnet.nbh-digital.com:22112",
 		"bootstrap3.testnet.nbh-digital.com:22112",
@@ -205,11 +204,12 @@ func GetTestnetBootstrapPeers() []modules.NetAddress {
 }
 
 func GetTestnetGenesisMintCondition() types.UnlockConditionProxy {
-	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f")))}
+	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f")))
+}
 
 func GetTestnetGenesisAuthCoinCondition() types.UnlockConditionProxy {
-	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f")))}
-
+	return types.NewCondition(types.NewUnlockHashCondition(unlockHashFromHex("01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f")))
+}
 
 func init() {
 	Version = build.MustParse(rawVersion)

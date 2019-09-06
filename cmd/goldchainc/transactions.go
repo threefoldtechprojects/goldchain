@@ -1,12 +1,12 @@
 package main
 
 import (
-	"github.com/threefoldtech/rivine/types"
 	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
-	"github.com/threefoldtech/rivine/extensions/minting"
-	mintingcli "github.com/threefoldtech/rivine/extensions/minting/client"
 	"github.com/threefoldtech/rivine/extensions/authcointx"
 	authcointxcli "github.com/threefoldtech/rivine/extensions/authcointx/client"
+	"github.com/threefoldtech/rivine/extensions/minting"
+	mintingcli "github.com/threefoldtech/rivine/extensions/minting/client"
+	"github.com/threefoldtech/rivine/types"
 
 	"github.com/threefoldtech/rivine/pkg/client"
 )
@@ -18,7 +18,6 @@ func RegisterDevnetTransactions(cli *client.CommandLineClient) {
 func RegisterTestnetTransactions(cli *client.CommandLineClient) {
 	registerTransactions(cli)
 }
-
 
 func registerTransactions(cli *client.CommandLineClient) {
 	// create minting plugin client...

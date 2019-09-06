@@ -16,7 +16,5 @@ func GetDevnetDaemonNetworkConfig() DaemonNetworkConfig {
 }
 
 func GetTestnetDaemonNetworkConfig() DaemonNetworkConfig {
-	return DaemonNetworkConfig{
-		
-	}
+	return DaemonNetworkConfig{}
 }

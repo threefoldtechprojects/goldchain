@@ -9,6 +9,7 @@ type CommandLineClient struct {
 	*client.CommandLineClient
 }
 
+// NewCommandLineClient creates a new goldchain commandline client
 func NewCommandLineClient(address, name, userAgent string) (*CommandLineClient, error) {
 	client, err := client.NewCommandLineClient(address, name, userAgent)
 	if err != nil {

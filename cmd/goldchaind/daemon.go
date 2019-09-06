@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,14 +11,16 @@ import (
 	"time"
 
 	"github.com/nbh-digital/goldchain/pkg/config"
-	"github.com/threefoldtech/rivine/types"
 
-	"github.com/julienschmidt/httprouter"
 	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
-	"github.com/threefoldtech/rivine/extensions/authcointx"
-	authcointxapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
+	"github.com/threefoldtech/rivine/types"
 	"github.com/threefoldtech/rivine/extensions/minting"
 	mintingapi "github.com/threefoldtech/rivine/extensions/minting/api"
+
+	"github.com/threefoldtech/rivine/extensions/authcointx"
+	authcointxapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
+
+	"github.com/julienschmidt/httprouter"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/modules/blockcreator"
 	"github.com/threefoldtech/rivine/modules/consensus"
@@ -109,13 +110,10 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			}()
 		}
 
-		var (
-			cs modules.ConsensusSet
+		var cs modules.ConsensusSet
+		var mintingPlugin    *minting.Plugin
+		var authCoinTxPlugin *authcointx.Plugin
 
-			// plugins
-			authCoinTxPlugin *authcointx.Plugin
-			mintingPlugin    *minting.Plugin
-		)
 		if moduleIdentifiers.Contains(daemon.ConsensusSetModule.Identifier()) {
 			printModuleIsLoading("consensus set")
 			cs, err = consensus.New(g, !cfg.NoBootstrap,
@@ -135,34 +133,13 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				}
 			}()
 
-			// register the auth coin tx plugin
-			// > NOTE: this also overwrites the standard tx controllers!!!!
-			authCoinTxPlugin = authcointx.NewPlugin(
-				setupNetworkCfg.GenesisAuthCondition,
-				goldchaintypes.TransactionVersionAuthAddressUpdateTx,
-				goldchaintypes.TransactionVersionAuthConditionUpdateTx,
-				nil, // no custom opts
-			)
-			err = cs.RegisterPlugin(ctx, "authcointx", authCoinTxPlugin)
-			if err != nil {
-				servErrs <- fmt.Errorf("failed to register the auth coin tx extension: %v", err)
-				err = authCoinTxPlugin.Close() //make sure any resources are released
-				if err != nil {
-					fmt.Println("Error during closing of the authCoinTxPlugin :", err)
-				}
-				cancel()
-				return
-			}
-			// add the HTTP handlers for the auth coin tx extension as well
-			authcointxapi.RegisterConsensusAuthCoinHTTPHandlers(router, authCoinTxPlugin)
-
 			// register the minting extension plugin
 			mintingPlugin = minting.NewMintingPlugin(
 				setupNetworkCfg.GenesisMintCondition,
-				goldchaintypes.MinterDefinitionTxVersion,
-				goldchaintypes.CoinCreationTxVersion,
-				&minting.PluginOptions{
-					CoinDestructionTransactionVersion: goldchaintypes.CoinDestructionTxVersion,
+				goldchaintypes.TransactionVersionMinterDefinition,
+				goldchaintypes.TransactionVersionCoinCreation,
+			&minting.PluginOptions{
+					CoinDestructionTransactionVersion: goldchaintypes.TransactionVersionCoinDestruction,
 				},
 			)
 			err = cs.RegisterPlugin(ctx, "minting", mintingPlugin)
@@ -177,6 +154,28 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			}
 			// add the HTTP handlers for the auth coin tx extension as well
 			mintingapi.RegisterConsensusMintingHTTPHandlers(router, mintingPlugin)
+
+			
+			// register the auth coin tx plugin
+			// > NOTE: this also overwrites the standard tx controllers!!!!
+			authCoinTxPlugin = authcointx.NewPlugin(
+				setupNetworkCfg.GenesisAuthCondition,
+				goldchaintypes.TransactionVersionAuthAddressUpdate,
+				goldchaintypes.TransactionVersionAuthConditionUpdate,
+				nil, // no custom opts
+			)
+			err = cs.RegisterPlugin(ctx, "authcointx", authCoinTxPlugin)
+			if err != nil {
+				servErrs <- fmt.Errorf("failed to register the auth coin tx extension: %v", err)
+				err = authCoinTxPlugin.Close() //make sure any resources are released
+				if err != nil {
+					fmt.Println("Error during closing of the authCoinTxPlugin :", err)
+				}
+				cancel()
+				return
+			}
+			// add the HTTP handlers for the auth coin tx extension as well
+			authcointxapi.RegisterConsensusAuthCoinHTTPHandlers(router, authCoinTxPlugin)
 		}
 
 		var tpool modules.TransactionPool
@@ -260,9 +259,8 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				}
 			}()
 
-			// register extension HTTP handlers
-			authcointxapi.RegisterExplorerAuthCoinHTTPHandlers(router, authCoinTxPlugin)
 			mintingapi.RegisterExplorerMintingHTTPHandlers(router, mintingPlugin)
+			authcointxapi.RegisterExplorerAuthCoinHTTPHandlers(router, authCoinTxPlugin)
 		}
 
 		fmt.Println("Setting up root HTTP API handler...")
@@ -344,70 +342,39 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 	// return the network configuration, based on the network name,
 	// which includes the genesis block as well as the bootstrap peers
 	switch cfg.BlockchainInfo.NetworkName {
-	case config.NetworkNameStandard:
-		return setupNetworkConfig{}, errors.New("standard net is disabled for goldchain, it is not ready for production") // TODO: enable again
-
-		// constants := config.GetStandardnetGenesis()
-		// networkConfig := config.GetStandardDaemonNetworkConfig()
-		// genesisAuthCondition := config.GetStandardnetGenesisAuthCoinCondition()
-
-		// // Register the transaction controllers for all transaction versions
-		// // supported on the standard network
-		// goldchaintypes.RegisterTransactionTypesForStandardNetwork(constants.CurrencyUnits.OneCoin, networkConfig)
-
-		// todo set bootstrap peers only if not set yet
-		// cfg.BootstrapPeers = config.GetStandardnetBootstrapPeers()
-
-		// // return the standard genesis block and bootstrap peers
-		// return setupNetworkConfig{
-		// 	NetworkConfig: daemon.NetworkConfig{
-		// 		Constants:      constants,
-		// 		BootstrapPeers: cfg.BootstrapPeers,
-		// 	},
-		// 	GenesisAuthCondition: genesisAuthCondition,
-		// }, nil
-
-	case config.NetworkNameTest:
-
-		constants := config.GetTestnetGenesis()
-		genesisMintCondition := config.GetTestnetGenesisMintCondition()
-		genesisAuthCondition := config.GetTestnetGenesisAuthCoinCondition()
-
-		bootstrapPeers := cfg.BootstrapPeers
-		if len(bootstrapPeers) == 0 {
-			bootstrapPeers = config.GetTestnetBootstrapPeers()
-		}
-
-		// return the testnet genesis block and bootstrap peers
-		return setupNetworkConfig{
-			NetworkConfig: daemon.NetworkConfig{
-				Constants:      constants,
-				BootstrapPeers: bootstrapPeers,
-			},
-			GenesisMintCondition: genesisMintCondition,
-			GenesisAuthCondition: genesisAuthCondition,
-		}, nil
-
-	case config.NetworkNameDev:
-
+	
+	case config.NetworkNameDevnet:
 		constants := config.GetDevnetGenesis()
-		genesisMintCondition := config.GetDevnetGenesisMintCondition()
-		genesisAuthCondition := config.GetDevnetGenesisAuthCoinCondition()
-
 		bootstrapPeers := cfg.BootstrapPeers
 		if len(bootstrapPeers) == 0 {
 			bootstrapPeers = config.GetDevnetBootstrapPeers()
 		}
-
-		// return the devnet genesis block and bootstrap peers
+		// return the genesis block and bootstrap peers
 		return setupNetworkConfig{
 			NetworkConfig: daemon.NetworkConfig{
 				Constants:      constants,
 				BootstrapPeers: bootstrapPeers,
 			},
-			GenesisMintCondition: genesisMintCondition,
-			GenesisAuthCondition: genesisAuthCondition,
+			GenesisMintCondition: config.GetDevnetGenesisMintCondition(),
+			GenesisAuthCondition: config.GetDevnetGenesisAuthCoinCondition(),
 		}, nil
+	
+	case config.NetworkNameTestnet:
+		constants := config.GetTestnetGenesis()
+		bootstrapPeers := cfg.BootstrapPeers
+		if len(bootstrapPeers) == 0 {
+			bootstrapPeers = config.GetTestnetBootstrapPeers()
+		}
+		// return the genesis block and bootstrap peers
+		return setupNetworkConfig{
+			NetworkConfig: daemon.NetworkConfig{
+				Constants:      constants,
+				BootstrapPeers: bootstrapPeers,
+			},
+			GenesisMintCondition: config.GetTestnetGenesisMintCondition(),
+			GenesisAuthCondition: config.GetTestnetGenesisAuthCoinCondition(),
+		}, nil
+	
 
 	default:
 		// network isn't recognised

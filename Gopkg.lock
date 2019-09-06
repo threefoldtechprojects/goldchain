@@ -107,7 +107,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f0213cecd5b706e4933a6123145bf3a58ecdbd0a6f63bb853aca863f3b55d01b"
+  digest = "1:4c68056e0dc8fd825dc82775ab4c6c05043bf7035828c7d8623fe74f2f3b0d35"
   name = "github.com/threefoldtech/rivine"
   packages = [
     "build",
@@ -136,18 +136,18 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "64754e99155572b2b0c2ff77ee7f4e80e766b8b2"
+  revision = "62a190660cfe9961492f51ecdaee61b7a5b8b119"
 
 [[projects]]
   branch = "master"
-  digest = "1:6bae001f7c4cddc9ebf2b47bd5ff1bd3978a84b422c468d6037dad284c8c8e9d"
+  digest = "1:7e02a7510d1d89eacdf48b2e4673b365fc5d195395c2af9d16dea4f54b997792"
   name = "github.com/tyler-smith/go-bip39"
   packages = [
     ".",
     "wordlists",
   ]
   pruneopts = "UT"
-  revision = "dbb3b84ba2ef14e894f5e33d6c6e43641e665738"
+  revision = "c55f737395bc849274c1d1a35ca6f29a4e568092"
 
 [[projects]]
   branch = "master"
@@ -184,7 +184,7 @@
     "twofish",
   ]
   pruneopts = "UT"
-  revision = "cc06ce4a13d484c0101a9e92913248488a75786d"
+  revision = "9756ffdc24725223350eb3266ffb92590d28f278"
 
 [[projects]]
   branch = "master"
@@ -196,18 +196,18 @@
     "html/charset",
   ]
   pruneopts = "UT"
-  revision = "da137c7871d730100384dbcf36e6f8fa493aef5b"
+  revision = "ba9fcec4b297b415637633c5a6e8fa592e4a16c3"
 
 [[projects]]
   branch = "master"
-  digest = "1:6f7b102dfe61016b45aa051b96413e36cc2eff446b61249fdf723dd8e24d308b"
+  digest = "1:f8843b8f21b8ba11275fa17b57b5460ed693bf1fd719038ea60fb2bb0f502d33"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "04f50cda93cbb67f2afa353c52f342100e80e625"
+  revision = "749cb33beabd9aa6d3178e3de05bcc914f70b2bf"
 
 [[projects]]
   digest = "1:8a0baffd5559acaa560f854d7d525c02f4fec2d4f8a214398556fb661a10f6e0"

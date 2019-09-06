@@ -8,23 +8,30 @@ function appendTransactionStatistics(infoBody, explorerTransaction, confirmed) {
 			// standard coin transactions
 			appendV1Transaction(infoBody, explorerTransaction, confirmed);
 			break;
-		// minting transactions
-		case 128: // minter definition
+
+		
+		// Minting Transactions
+		case 128: // Condition Update Tx
 			appendV128Transaction(infoBody, explorerTransaction, confirmed);
 			break;
-		case 129: // coin creation
+		case 129: // Coin Creation Tx
 			appendV129Transaction(infoBody, explorerTransaction, confirmed);
 			break;
-		case 130: // burn transaction
+		case 130: // Optional Coin Destruction Tx
 			appendV130Transaction(infoBody, explorerTransaction, confirmed);
 			break;
-		// auth coin transactions
-		case 176: // address update
+		
+
+		
+		// AuthCoin Transactions
+		case 176: // Address Update Tx
 			appendV176Transaction(infoBody, explorerTransaction, confirmed);
 			break;
-		case 177: // condition update
+		case 177: // Condition Update Tx
 			appendV177Transaction(infoBody, explorerTransaction, confirmed);
 			break;
+		
+
 		default:
 			appendUnknownTransaction(infoBody, explorerTransaction, confirmed)
 	}
@@ -283,7 +290,7 @@ function appendV1Transaction(infoBody, explorerTransaction, confirmed) {
 		appendStatTableTitle(infoBody, 'Blockstake Inputs');
 		for (var i = 0; i < explorerTransaction.rawtransaction.data.blockstakeinputs.length; i++) {
 			var f;
-			switch (explorerTransaction.rawtransaction.data.blockstakeinputs[i].fulfillment.type) {
+			switch (explorerTransaction.rawtransaction.data.blockstakeinputs[i].fulfillment.type) {				
 				case 0:
 					break;
 				case 1:
@@ -344,6 +351,8 @@ function appendV1Transaction(infoBody, explorerTransaction, confirmed) {
 		}
 	}
 }
+
+// Minting Transactions
 
 function appendV128Transaction(infoBody, explorerTransaction, confirmed) {
 	var ctx = getBlockchainContext();
@@ -652,6 +661,9 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 	}
 	appendStat(CoinsBurnedTable, 'Value', readableCoins(coinsBurnedAmount));
 }
+ 
+
+// Auth Coin Transactions
 
 function appendV176Transaction(infoBody, explorerTransaction, confirmed) {
 	var ctx = getBlockchainContext();
@@ -670,7 +682,7 @@ function appendV176Transaction(infoBody, explorerTransaction, confirmed) {
 	doms = appendStat(table, 'ID', '');
 	linkHash(doms[2], explorerTransaction.id);
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
-		appendStat(table, 'Arbitrary Data Byte Count',  b64DecodeUnicode(explorerTransaction.rawtransaction.data.arbitrarydata).length);
+		appendStat(table, 'Arbitrary Data Byte Count',  decodeBase64ArrayBuffer(explorerTransaction.rawtransaction.data.arbitrarydata).length);
 	}
 	infoBody.appendChild(table);
 
@@ -724,7 +736,7 @@ function appendV176Transaction(infoBody, explorerTransaction, confirmed) {
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
 		appendStatTableTitle(infoBody, 'Arbitrary Data');
 		var table = createStatsTable();
-		appendStat(table, 'Base64-encoded Data', explorerTransaction.rawtransaction.data.arbitrarydata);
+		appendStat(table, 'data', arbitraryDataToString(explorerTransaction.rawtransaction.data.arbitrarydata));
 		infoBody.appendChild(table);
 	}
 }
@@ -746,7 +758,7 @@ function appendV177Transaction(infoBody, explorerTransaction, confirmed) {
 	doms = appendStat(table, 'ID', '');
 	linkHash(doms[2], explorerTransaction.id);
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
-		appendStat(table, 'Arbitrary Data Byte Count',  b64DecodeUnicode(explorerTransaction.rawtransaction.data.arbitrarydata).length);
+		appendStat(table, 'Arbitrary Data Byte Count',  decodeBase64ArrayBuffer(explorerTransaction.rawtransaction.data.arbitrarydata).length);
 	}
 	infoBody.appendChild(table);
 
@@ -798,10 +810,11 @@ function appendV177Transaction(infoBody, explorerTransaction, confirmed) {
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
 		appendStatTableTitle(infoBody, 'Arbitrary Data');
 		var table = createStatsTable();
-		appendStat(table, 'Base64-encoded Data', explorerTransaction.rawtransaction.data.arbitrarydata);
+		appendStat(table, 'data', arbitraryDataToString(explorerTransaction.rawtransaction.data.arbitrarydata));
 		infoBody.appendChild(table);
 	}
 }
+
 
 // *************
 // * V1 Inputs *
@@ -839,7 +852,6 @@ function addV1T1Input(infoBody, explorerTransaction, i, type) {
 	appendStatHeader(table, 'Fulfillment');
 	addV1Fulfillment(table, explorerTransaction.rawtransaction.data[inputspecifier][i].fulfillment)
 	infoBody.appendChild(table);
-	return {amount: explorerTransaction[inputoutputspecifier][i].value};
 }
 
 function addV1Fulfillment(table, fulfillment) {
@@ -876,8 +888,6 @@ function addV1T2Input(infoBody, explorerTransaction, i, type) {
 	appendStatHeader(table, 'Fulfillment');
 	addV2Fulfillment(table, explorerTransaction.rawtransaction.data[inputspecifier][i].fulfillment);
 	infoBody.appendChild(table);
-
-	return {amount: explorerTransaction[inputoutputspecifier][i].value};
 }
 
 function addV2Fulfillment(table, fulfillment) {
@@ -898,13 +908,13 @@ function addV1T3Input(infoBody, explorerTransaction, i, type) {
 	var doms = appendStat(table, 'ID', '');
 	linkHash(doms[2], explorerTransaction.rawtransaction.data[inputspecifier][i].parentid);
 
-
+	
 	var amount = explorerTransaction[inputoutputspecifier][i].value;
 	if (type === 'coins') {
 		amount = readableCoins(amount);
 	}
 	appendStat(table, 'Value', amount);
-
+	
 	appendStatHeader(table, 'Condition');
 	appendStat(table, 'Type', explorerTransaction[inputoutputspecifier][i].condition.type);
 	var rawInput = explorerTransaction[inputoutputspecifier][i];
@@ -924,8 +934,6 @@ function addV1T3Input(infoBody, explorerTransaction, i, type) {
 	appendStatHeader(table, 'Fulfillment');
 	addV3Fulfillment(table, explorerTransaction.rawtransaction.data[inputspecifier][i].rawInput.fulfillment)
 	infoBody.appendChild(table);
-
-	return {amount: explorerTransaction[inputoutputspecifier][i].value};
 }
 
 function addV3Fulfillment(table, fulfillment) {
@@ -952,11 +960,11 @@ function addV1NilOutput(_ctx, table, explorerTransaction, i, type, outputs) {
 
 	var doms = appendStat(table, 'ID', '');
 	linkHash(doms[2], explorerTransaction[outputidspecifier][i]);
-
+	
 	var locked = addVNilCondition(_ctx, table);
 
 	if (outputs == null) {
-		var outputspecifier = getOutputSpecifier(type);
+		var outputspecifier = getOutputSpecifier(type);	
 		outputs = explorerTransaction.rawtransaction.data[outputspecifier];
 	}
 
@@ -984,7 +992,7 @@ function addV1T1Output(_ctx, table, explorerTransaction, i, type, outputs) {
 	linkHash(doms[2], explorerTransaction[outputidspecifier][i]);
 
 	if (outputs == null) {
-		var outputspecifier = getOutputSpecifier(type);
+		var outputspecifier = getOutputSpecifier(type);	
 		outputs = explorerTransaction.rawtransaction.data[outputspecifier];
 	}
 
@@ -1012,7 +1020,7 @@ function addV1T2Output(_ctx, table, explorerTransaction, i, type, outputs) {
 	var outputunlockhashesspecifier = getOutputUnlockHashesSpecifier(type);
 
 	if (outputs == null) {
-		var outputspecifier = getOutputSpecifier(type);
+		var outputspecifier = getOutputSpecifier(type);	
 		outputs = explorerTransaction.rawtransaction.data[outputspecifier];
 	}
 
@@ -1062,7 +1070,7 @@ function addV1T3Output(ctx, table, explorerTransaction, i, type, outputs) {
 	linkHash(doms[2], explorerTransaction[outputidspecifier][i]);
 
 	if (outputs == null) {
-		var outputspecifier = getOutputSpecifier(type);
+		var outputspecifier = getOutputSpecifier(type);	
 		outputs = explorerTransaction.rawtransaction.data[outputspecifier];
 	}
 
@@ -1077,7 +1085,7 @@ function addV1T3Output(ctx, table, explorerTransaction, i, type, outputs) {
 		amount = readableCoins(amount);
 	}
 	appendStat(table, 'Value', amount);
-
+	
 	return {
 		value: output.value,
 		locked: locked,
@@ -1129,7 +1137,7 @@ function addV1T4Output(_ctx, table, explorerTransaction, i, type, outputs) {
 	linkHash(doms[2], explorerTransaction[outputidspecifier][i]);
 
 	if (outputs == null) {
-		var outputspecifier = getOutputSpecifier(type);
+		var outputspecifier = getOutputSpecifier(type);	
 		outputs = explorerTransaction.rawtransaction.data[outputspecifier];
 	}
 
@@ -1381,7 +1389,7 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 		for (var i = 0; i < scoids.length; i++) {
 			if (scoidMatches[i] == true) {
 				appendStat(tables[i], 'Has Been Spent', 'Yes');
-
+				
 			} else {
 				appendStat(tables[i], 'Has Been Spent', 'No');
 				if (values[i].confirmed) {
@@ -1416,10 +1424,6 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 		doms = appendStat(spendTable, 'Transaction ID', '');
 		linkHash(doms[2], lastSpendTxID);
 	}
-
-	// TODO: Compile the list of file contracts and revisions that use the
-	// unlock hash, and that have the unlock hash somewhere in the payout
-	// scheme.
 
 	// Compile a set of transactions that have siafund outputs featuring
 	// the hash, along with the corresponding siafund output ids. Later,
@@ -1631,7 +1635,7 @@ function appendUnlockHashTables(domParent, hash, explorerHash) {
 	}
 	var spanAuthStatusElement = document.createElement('span');
 	spanAuthStatusElement.appendChild(document.createTextNode(' '));
-	spanAuthStatusElement.appendChild(authStatusElement);
+	spanAuthStatusElement.appendChild(authStatusElement); 
 	// add title (with auth state)
 	var titleHolder = document.createElement('h2');
 	titleHolder.appendChild(document.createTextNode(hashTitle));
@@ -1682,7 +1686,7 @@ function appendUnlockHashTables(domParent, hash, explorerHash) {
 				if (j == 0) {
 					sourceDesc = 'Block Creator Reward';
 				} else if (j == 1) {
-					sourceDesc = 'Transactions Fee Payout';
+					sourceDesc = 'Transactions Fee Payout'; 
 				} else {
 					// try to get specific title for this custom Miner Fee Payout
 					var targetIndex = j - 2;
@@ -1984,9 +1988,9 @@ function appendRawTransaction(infoBody, rawTx) {
 	container.classList.add('raw', 'hidden');
 	var block = document.createElement('CODE');
 	block.textContent = JSON.stringify(rawTx);
-
+	
 	buttonContainer.appendChild(button);
-	infoBody.appendChild(buttonContainer);
+	infoBody.appendChild(buttonContainer);	
 	container.appendChild(block);
 	infoBody.appendChild(container);
 }
@@ -2031,9 +2035,7 @@ function getCoinOutputsFromExplorerTransaction(txn) {
 	if (txn.rawtransaction.data && txn.rawtransaction.data.coinoutputs) {
 		return txn.rawtransaction.data.coinoutputs;
 	}
-	if (txn.rawtransaction.version == 130) {
-		return [txn.rawtransaction.data.refundcoinoutput];
-	}
+	var version = txn.rawtransaction.version;
 	return [];
 }
 
@@ -2174,7 +2176,7 @@ function appendNavigationMenuCoinOutput(explorerHash, hash) {
 					linkHash(outputSpan, explorerHash.transactions[i].coinoutputids[j], 'Coin Output');
 					return;
 				}
-			}
+			} 
 		}
 	}
 	if (explorerHash.blocks == null) {
@@ -2267,8 +2269,9 @@ function fetchCurrentAddressAuthStatus(address) {
 		return 'error';
 	}
 	resp = JSON.parse(request.responseText) || {};
-	return (resp.auths && resp.auths.length === 1 && resp.auths[0]) || false;
+	return resp.auth || false;
 }
+
 
 // parseHashQuery parses the query string in the URL and loads the block
 // that makes sense based on the result.
@@ -2433,10 +2436,10 @@ function buildErrorPage(hash) {
 				'The transaction, Block, Coin Output or Blockstake Output'+
 				' &mdash;referenced by the given identifier&mdash; might have been reverted as part of a fork');
 		} else {
-			title += ' has an invalid length;'
+			title += ' has an invalid length;'	
 		}
 		makeErrorMessage(errorBody, title, suggestions);
-
+	
 		// add a last suggestion
 		var lastSuggestion = document.createElement('div');
 		errorBody.appendChild(lastSuggestion)
@@ -2459,7 +2462,7 @@ function buildErrorPage(hash) {
 		'Unlock Hashes &mdash;meaning Wallet and Contract Addresses&mdash; have a length of 78 characters'
 	]
 	makeErrorMessage(errorBody, title, suggestions);
-}
+} 
 
 function makeErrorMessage(body, title, suggestions) {
 	var errorMessage = document.createElement('div');
@@ -2495,7 +2498,7 @@ function appendSearchHash() {
 
 	text.innerHTML = "Would you like to try again? Please correct your hash, and paste it here in order to search for it:";
 
-	searchField.required = true;
+	searchField.required = true;              
 	searchField.setAttribute('name', 'hash');
 
 	searchButton.setAttribute('value', 'go');

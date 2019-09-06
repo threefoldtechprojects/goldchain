@@ -58,11 +58,17 @@ func (cmds *commands) rootCommand(*cobra.Command, []string) {
 func (cmds *commands) versionCommand(*cobra.Command, []string) {
 	var postfix string
 	switch cmds.cfg.BlockchainInfo.NetworkName {
+	
 	case "devnet":
-		postfix = "-dev"
+		
+		postfix = "-devnet"
+		
+	
 	case "testnet":
-		postfix = "-testing"
-	case "standard": // ""
+		
+		postfix = "-testnet"
+		
+	
 	default:
 		postfix = "-???"
 	}

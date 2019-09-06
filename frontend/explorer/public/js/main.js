@@ -387,17 +387,21 @@ function txVersionName(version) {
 		case 1:
 			return "Regular Transaction";
 
+		
 		case 128:
 			return "Minter Definition";
 		case 129:
-			return "Coin Creation";
+			return "Coin Creation"; 
 		case 130:
 			return "Burn Transaction";
+		
 
+		
 		case 176:
 			return "Address Authentication Update";
 		case 177:
 			return "Auth Condition Update";
+		
 
 		default:
 			return "Unknown";
@@ -473,6 +477,7 @@ function getBlockchainConstants() {
 	return JSON.parse(request.responseText);
 }
 
+
 //Changes the document title according to the network the page is running on
 function buildPageTitle() {
 	var networkName = getBlockchainConstants().chaininfo.NetworkName;
@@ -492,8 +497,6 @@ function buildPageTitle() {
 			break;
 	}
 }
-
-
 
 function uint8ArrayToHexString(uarray) {
 	return '0x' + uarray.map(x => ('00' + x.toString(16)).slice(-2)).join('')

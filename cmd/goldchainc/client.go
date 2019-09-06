@@ -4,12 +4,11 @@ import (
 	"github.com/threefoldtech/rivine/pkg/client"
 )
 
-// CommandLineClient can be used to extend it with other commands
+// CommandLineClient extend for commands
 type CommandLineClient struct {
 	*client.CommandLineClient
 }
 
-//NewCommandLineClient creates a new goldchain commandline client
 func NewCommandLineClient(address, name, userAgent string) (*CommandLineClient, error) {
 	client, err := client.NewCommandLineClient(address, name, userAgent)
 	if err != nil {

@@ -16,3 +16,4 @@ cmd/goldchainc/goldchainc
 # release dir
 release/
 cmd/goldchaind/testnet
+discussions

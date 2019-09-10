@@ -28,7 +28,7 @@ fmt:
 	gofmt -s -l -w $(pkgs)
 
 generate:
-	rivinecg generate blockchain
+	rivinecg generate blockchain --explorer=plainjs
 	dep ensure -v -update
 
 # vet calls go vet on all packages.

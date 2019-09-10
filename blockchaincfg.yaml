@@ -1,7 +1,5 @@
 template:
-  repository:
-    owner: threefoldtech
-    repo: rivine-chain-template
+  repository: "github.com/threefoldtech/rivine-chain-template"
   version: master
 frontend:
   caddy:

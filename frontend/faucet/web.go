@@ -59,7 +59,12 @@ func (f *faucet) requestTokensHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Println("[ERROR] Failed to drip coins:", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		renderRequestTemplate(w, RequestBody{
+			ChainName:    f.cts.ChainInfo.Name,
+			ChainNetwork: f.cts.ChainInfo.NetworkName,
+			CoinUnit:     f.cts.ChainInfo.CoinUnit,
+			Error:        err.Error(),
+		})
 		return
 	}
 	renderCoinConfirmationTemplate(w, CoinConfirmationBody{
@@ -103,7 +108,12 @@ func (f *faucet) requestAuthorizationHandler(w http.ResponseWriter, r *http.Requ
 			return
 		}
 		log.Println("[ERROR] Failed to authorize address:", err.Error())
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		renderRequestTemplate(w, RequestBody{
+			ChainName:    f.cts.ChainInfo.Name,
+			ChainNetwork: f.cts.ChainInfo.NetworkName,
+			CoinUnit:     f.cts.ChainInfo.CoinUnit,
+			Error:        err.Error(),
+		})
 		return
 	}
 	action := actionAuthorize

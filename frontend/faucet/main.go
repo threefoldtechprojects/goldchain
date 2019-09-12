@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/nbh-digital/goldchain/pkg/config"
 	"github.com/threefoldtech/rivine/extensions/authcointx"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/pkg/api"
@@ -58,7 +57,7 @@ func main() {
 
 	f := faucet{
 		cts:         cts,
-		coinsToGive: config.GetTestnetGenesis().CurrencyUnits.OneCoin.Mul64(coinsToGive),
+		coinsToGive: cts.OneCoin.Mul64(coinsToGive),
 	}
 
 	log.Println("[INFO] Faucet listening on port", websitePort)
@@ -85,10 +84,12 @@ func init() {
 	flag.Parse()
 
 	// register tx versions for authentication
-	_ = authcointx.NewPlugin(
-		config.GetTestnetGenesisAuthCoinCondition(),
-		gtypes.TransactionVersionAuthAddressUpdate,
-		gtypes.TransactionVersionAuthConditionUpdate,
-		nil,
-	)
+	types.RegisterTransactionVersion(gtypes.TransactionVersionAuthAddressUpdate, authcointx.AuthAddressUpdateTransactionController{
+		AuthInfoGetter:     nil,
+		TransactionVersion: gtypes.TransactionVersionAuthAddressUpdate,
+	})
+	types.RegisterTransactionVersion(gtypes.TransactionVersionAuthConditionUpdate, authcointx.AuthConditionUpdateTransactionController{
+		AuthInfoGetter:     nil,
+		TransactionVersion: gtypes.TransactionVersionAuthConditionUpdate,
+	})
 }

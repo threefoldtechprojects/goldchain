@@ -107,7 +107,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4c68056e0dc8fd825dc82775ab4c6c05043bf7035828c7d8623fe74f2f3b0d35"
+  digest = "1:b2fea6bd9454a804244eeb9076050617230b6a8c2975857118241fe243d8c213"
   name = "github.com/threefoldtech/rivine"
   packages = [
     "build",
@@ -132,11 +132,12 @@
     "pkg/daemon",
     "pkg/encoding/rivbin",
     "pkg/encoding/siabin",
+    "profile",
     "sync",
     "types",
   ]
   pruneopts = "UT"
-  revision = "9039cbd4264dba9bf228cb05e0836c3e37a4252d"
+  revision = "9bb6225d5bcbae6dc4a8f65d11a6a10fc1a45cfe"
 
 [[projects]]
   branch = "master"
@@ -184,7 +185,7 @@
     "twofish",
   ]
   pruneopts = "UT"
-  revision = "094676da4a83be5288d281081bba63a173ce6772"
+  revision = "227b76d455e791cb042b03e633e2f7fbcfdf74a5"
 
 [[projects]]
   branch = "master"
@@ -200,14 +201,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:65b206ff73c6bd85cebe5d53247b092fd56577994a8851c5fc49cf3da1e83957"
+  digest = "1:4fbbee673d02650b465b3ec548536c754cd61e357f7becf037fa6774cac3b72c"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "bbd175535a8b9969bb0b33f1502f681ee0b122bd"
+  revision = "bc967efca4b87fb45e946a3ea4cb891883404fd0"
 
 [[projects]]
   digest = "1:8a0baffd5559acaa560f854d7d525c02f4fec2d4f8a214398556fb661a10f6e0"
@@ -262,6 +263,7 @@
     "github.com/threefoldtech/rivine/pkg/cli",
     "github.com/threefoldtech/rivine/pkg/client",
     "github.com/threefoldtech/rivine/pkg/daemon",
+    "github.com/threefoldtech/rivine/profile",
     "github.com/threefoldtech/rivine/types",
   ]
   solver-name = "gps-cdcl"

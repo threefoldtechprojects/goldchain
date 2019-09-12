@@ -89,6 +89,11 @@ func (f *faucet) requestAuthorization(w http.ResponseWriter, r *http.Request) {
 
 	txID, err := updateAddressAuthorization(body.Address, true)
 	if err != nil {
+		if err == errAuthorizationInProgress {
+			log.Println("[WARNING] Failed to authorize address:", err.Error())
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
 		log.Println("[ERROR] Failed to authorize address:", err.Error())
 		w.WriteHeader(http.StatusInternalServerError)
 		return

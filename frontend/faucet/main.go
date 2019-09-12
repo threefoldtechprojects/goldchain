@@ -87,8 +87,8 @@ func init() {
 	// register tx versions for authentication
 	_ = authcointx.NewPlugin(
 		config.GetTestnetGenesisAuthCoinCondition(),
-		gtypes.TransactionVersionAuthAddressUpdateTx,
-		gtypes.TransactionVersionAuthConditionUpdateTx,
+		gtypes.TransactionVersionAuthAddressUpdate,
+		gtypes.TransactionVersionAuthConditionUpdate,
 		nil,
 	)
 }

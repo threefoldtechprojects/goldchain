@@ -92,6 +92,16 @@ func (f *faucet) requestAuthorizationHandler(w http.ResponseWriter, r *http.Requ
 	log.Println("[DEBUG] Authorizing address", strUH, "( authorize =", authorize, ")")
 	txID, err := updateAddressAuthorization(uh, authorize)
 	if err != nil {
+		if err == errAuthorizationInProgress {
+			log.Println("[DEBUG] Failed to authorize address:", err.Error())
+			renderRequestTemplate(w, RequestBody{
+				ChainName:    f.cts.ChainInfo.Name,
+				ChainNetwork: f.cts.ChainInfo.NetworkName,
+				CoinUnit:     f.cts.ChainInfo.CoinUnit,
+				Error:        err.Error(),
+			})
+			return
+		}
 		log.Println("[ERROR] Failed to authorize address:", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

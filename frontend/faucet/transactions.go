@@ -18,9 +18,19 @@ var (
 	// errUnauthorized is returned when an address wants to receive coins, but
 	// is currently unauthorized
 	errUnauthorized = errors.New("can't send coins to a currently unauthorized address")
+
+	// errAuthorizationInProgress is returned when an address is being evaluated for authorization
+	// in the transactionpool
+	errAuthorizationInProgress = errors.New("authorization already in progress")
 )
 
 func updateAddressAuthorization(address types.UnlockHash, authorize bool) (types.TransactionID, error) {
+	// Check if auth status is in progress
+	err := checkAuthStatusInProgress(address)
+	if err != nil {
+		return types.TransactionID{}, err
+	}
+
 	// Create transaction
 	tx := authcointx.AuthAddressUpdateTransaction{Nonce: types.RandomTransactionNonce()}
 	if authorize {
@@ -34,7 +44,7 @@ func updateAddressAuthorization(address types.UnlockHash, authorize bool) (types
 	// Sign transaction
 	log.Println("[DEBUG] Signing authorization transaction")
 	var signedTx interface{}
-	data, err := json.Marshal(tx.Transaction(types.TransactionVersion(gtypes.TransactionVersionAuthAddressUpdateTx)))
+	data, err := json.Marshal(tx.Transaction(types.TransactionVersion(gtypes.TransactionVersionAuthAddressUpdate)))
 	if err != nil {
 		return types.TransactionID{}, err
 	}
@@ -57,23 +67,8 @@ func updateAddressAuthorization(address types.UnlockHash, authorize bool) (types
 
 func dripCoins(address types.UnlockHash, amount types.Currency) (types.TransactionID, error) {
 	// Check if address is authorized first
-	var result authapi.GetAddressesAuthStateResponse
-	err := httpClient.GetAPI(fmt.Sprintf("/consensus/authcoin/status?addr=%s", address.String()), &result)
+	err := checkAuthStatusCompleted(address)
 	if err != nil {
-		return types.TransactionID{}, err
-	}
-	if len(result.AuthStates) == 0 {
-		return types.TransactionID{}, fmt.Errorf(
-			"failed to check authorization state for address %s: no auth states or error returned",
-			address.String())
-	}
-	if len(result.AuthStates) > 1 {
-		return types.TransactionID{}, fmt.Errorf(
-			"failed to check authorization state for address %s: ambiguity issue: more than one auth state returned, while one was expected",
-			address.String())
-	}
-
-	if !result.AuthStates[0] {
 		return types.TransactionID{}, errUnauthorized
 	}
 
@@ -97,4 +92,42 @@ func dripCoins(address types.UnlockHash, amount types.Currency) (types.Transacti
 		log.Println("[ERROR] /wallet/coins - request body:", string(data))
 	}
 	return resp.TransactionID, err
+}
+
+// checkAuthStatusInProgress checks if a transaction for updating auth status is already in progress.
+// This by checking if a transaction with the provided unlockhash is in the transactionpool.
+func checkAuthStatusInProgress(address types.UnlockHash) error {
+	var txpoolResp api.TransactionPoolGET
+	err := httpClient.GetAPI(fmt.Sprintf("/transactionpool/transactions?unockhash=%s", address.String()), &txpoolResp)
+	if err != nil {
+		return err
+	}
+	if len(txpoolResp.Transactions) > 0 {
+		return errAuthorizationInProgress
+	}
+	return nil
+}
+
+// checkAuthStatusCompleted checks if an address is authorized else it returns an error.
+func checkAuthStatusCompleted(address types.UnlockHash) error {
+	var result authapi.GetAddressesAuthStateResponse
+	err := httpClient.GetAPI(fmt.Sprintf("/consensus/authcoin/status?addr=%s", address.String()), &result)
+	if err != nil {
+		return err
+	}
+	if len(result.AuthStates) == 0 {
+		return fmt.Errorf(
+			"failed to check authorization state for address %s: no auth states or error returned",
+			address.String())
+	}
+	if len(result.AuthStates) > 1 {
+		return fmt.Errorf(
+			"failed to check authorization state for address %s: ambiguity issue: more than one auth state returned, while one was expected",
+			address.String())
+	}
+
+	if !result.AuthStates[0] {
+		return errors.New("Unauthorized")
+	}
+	return nil
 }

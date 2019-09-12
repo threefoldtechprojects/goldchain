@@ -41,6 +41,11 @@ install:
 	go build -race -tags='dev debug profile' -ldflags '$(ldflagsversion)' -o $(daemonbin) $(daemonpkgs)
 	go build -race -tags='dev debug profile' -ldflags '$(ldflagsversion)' -o $(clientbin) $(clientpkgs)
 
+# installs std (release) binaries with profiling enabled on http on port 10501
+install-profile-std:
+	go build -tags='profile' -ldflags '$(ldflagsversion)' -o $(daemonbin) $(daemonpkgs)
+	go build -ldflags '$(ldflagsversion)' -o $(clientbin) $(clientpkgs)
+
 # installs std (release) binaries
 install-std:
 	go build -ldflags '$(ldflagsversion)' -o $(daemonbin) $(daemonpkgs)
@@ -85,4 +90,4 @@ check-%:
 		exit 1; \
 	fi
 
-.PHONY: all test fmt generate vet install install-std embed-explorer-version explorer release-explorer release-flist archive release-dir get_hub_jwt check-%
+.PHONY: all test fmt generate vet install install-profile-std install-std embed-explorer-version explorer release-explorer release-flist archive release-dir get_hub_jwt check-%

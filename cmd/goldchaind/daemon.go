@@ -118,7 +118,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			printModuleIsLoading("consensus set")
 			cs, err = consensus.New(g, !cfg.NoBootstrap,
 				filepath.Join(cfg.RootPersistentDir, modules.ConsensusDir),
-				cfg.BlockchainInfo, networkCfg.Constants, cfg.VerboseLogging)
+				cfg.BlockchainInfo, networkCfg.Constants, cfg.VerboseLogging, cfg.DebugConsensusDB)
 			if err != nil {
 				servErrs <- err
 				cancel()

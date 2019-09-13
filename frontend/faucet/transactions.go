@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"log"
 
+	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
 	"github.com/threefoldtech/rivine/extensions/authcointx"
+	authapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
 	"github.com/threefoldtech/rivine/pkg/api"
 	"github.com/threefoldtech/rivine/types"
-
-	gtypes "github.com/nbh-digital/goldchain/pkg/types"
-	authapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
 )
 
 var (
@@ -44,7 +43,7 @@ func updateAddressAuthorization(address types.UnlockHash, authorize bool) (types
 	// Sign transaction
 	log.Println("[DEBUG] Signing authorization transaction")
 	var signedTx interface{}
-	data, err := json.Marshal(tx.Transaction(types.TransactionVersion(gtypes.TransactionVersionAuthAddressUpdate)))
+	data, err := json.Marshal(tx.Transaction(types.TransactionVersion(goldchaintypes.TransactionVersionAuthAddressUpdate)))
 	if err != nil {
 		return types.TransactionID{}, err
 	}

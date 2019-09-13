@@ -14,7 +14,6 @@ generation:
     - docs/*
     - frontend/explorer/public/assets/icon.{png,ico}
     - frontend/explorer/public/assets/mention.txt
-    - frontend/faucet/*
 blockchain:
   name: goldchain
   longName: GoldChain

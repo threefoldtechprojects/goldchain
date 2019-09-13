@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/nbh-digital/goldchain/pkg/config"
 	"github.com/threefoldtech/rivine/types"
 )
 
@@ -43,7 +42,7 @@ func (f *faucet) requestCoins(w http.ResponseWriter, r *http.Request) {
 		txID, err = dripCoins(body.Address, f.coinsToGive)
 	} else {
 		// If there is an amount requested, use the provided amount
-		txID, err = dripCoins(body.Address, config.GetTestnetGenesis().CurrencyUnits.OneCoin.Mul64(body.Amount))
+		txID, err = dripCoins(body.Address, f.cts.OneCoin.Mul64(body.Amount))
 	}
 
 	if err != nil {

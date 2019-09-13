@@ -7,13 +7,12 @@ import (
 	"net/http"
 	"sync"
 
+	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
 	"github.com/threefoldtech/rivine/extensions/authcointx"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/pkg/api"
 	"github.com/threefoldtech/rivine/pkg/daemon"
 	"github.com/threefoldtech/rivine/types"
-
-	gtypes "github.com/nbh-digital/goldchain/pkg/types"
 )
 
 type faucet struct {
@@ -82,14 +81,13 @@ func init() {
 	flag.StringVar(&httpClient.RootURL, "daemon-address", httpClient.RootURL, "address of the daemon (with unlocked wallet) to talk to")
 	flag.Uint64Var(&coinsToGive, "fund-amount", coinsToGive, "amount of coins to give per drip of the faucet")
 	flag.Parse()
-
 	// register tx versions for authentication
-	types.RegisterTransactionVersion(gtypes.TransactionVersionAuthAddressUpdate, authcointx.AuthAddressUpdateTransactionController{
+	types.RegisterTransactionVersion(goldchaintypes.TransactionVersionAuthAddressUpdate, authcointx.AuthAddressUpdateTransactionController{
 		AuthInfoGetter:     nil,
-		TransactionVersion: gtypes.TransactionVersionAuthAddressUpdate,
+		TransactionVersion: goldchaintypes.TransactionVersionAuthAddressUpdate,
 	})
-	types.RegisterTransactionVersion(gtypes.TransactionVersionAuthConditionUpdate, authcointx.AuthConditionUpdateTransactionController{
+	types.RegisterTransactionVersion(goldchaintypes.TransactionVersionAuthConditionUpdate, authcointx.AuthConditionUpdateTransactionController{
 		AuthInfoGetter:     nil,
-		TransactionVersion: gtypes.TransactionVersionAuthConditionUpdate,
+		TransactionVersion: goldchaintypes.TransactionVersionAuthConditionUpdate,
 	})
 }

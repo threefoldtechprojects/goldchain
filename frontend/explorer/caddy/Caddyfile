@@ -1,8 +1,4 @@
-http://explorer.testnet.nbh-digital.com {
-    redir https://explorer.testnet.nbh-digital.com
-}
-
-https://explorer.testnet.nbh-digital.com {
+explorer.testnet.nbh-digital.com {
     root ../public
 
     header / {

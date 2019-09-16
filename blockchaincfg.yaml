@@ -2,9 +2,14 @@ template:
   repository: "github.com/threefoldtech/rivine-chain-template"
   version: master
 frontend:
-  caddy:
-    dns: explorer.testnet.nbh-digital.com
-    tls: support@nbh-digital.com
+  explorer:
+    caddy:
+      dns: explorer.testnet.nbh-digital.com
+      tls: support@nbh-digital.com
+  faucet:
+    caddy:
+      dns: faucet.testnet.nbh-digital.com
+      tls: support@nbh-digital.com
 generation:
   ignore:
     - .gitignore

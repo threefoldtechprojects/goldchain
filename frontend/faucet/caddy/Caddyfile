@@ -1,0 +1,8 @@
+faucet.testnet.nbh-digital.com {
+    proxy / localhost:2020 {
+        transparent
+    }
+
+    log stdout
+    tls support@nbh-digital.com
+}

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log"
 
+	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
 	"github.com/threefoldtech/rivine/extensions/authcointx"
+	authapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
 	"github.com/threefoldtech/rivine/pkg/api"
 	"github.com/threefoldtech/rivine/types"
-  goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
-	authapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
 )
 
 var (

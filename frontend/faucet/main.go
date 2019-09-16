@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"sync"
 
+	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
+	"github.com/threefoldtech/rivine/extensions/authcointx"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/pkg/api"
 	"github.com/threefoldtech/rivine/pkg/daemon"
 	"github.com/threefoldtech/rivine/types"
-  goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
-	"github.com/threefoldtech/rivine/extensions/authcointx"
 )
 
 type faucet struct {

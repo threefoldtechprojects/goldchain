@@ -98,16 +98,16 @@
   version = "v0.0.5"
 
 [[projects]]
-  digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
+  digest = "1:524b71991fc7d9246cc7dc2d9e0886ccb97648091c63e30eef619e6862c955dd"
   name = "github.com/spf13/pflag"
   packages = ["."]
   pruneopts = "UT"
-  revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
-  version = "v1.0.3"
+  revision = "2e9d26c8c37aae03e3f9d4e90b7116f5accb7cab"
+  version = "v1.0.5"
 
 [[projects]]
   branch = "master"
-  digest = "1:3237535c35f41344cf2e59d6b75398b26ef46fa57a51cfb714dc42013afe63d2"
+  digest = "1:b1767fa84c01c02dc0b9ea8ca079fb271a9f6a608104c98c8c2669583b6f3436"
   name = "github.com/threefoldtech/rivine"
   packages = [
     "build",
@@ -137,7 +137,7 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "0f41a77bcdbaa12977990d2bf056e8cdf4b6519a"
+  revision = "d9d5fba7655fca025be210e12aec6fbc54da09ff"
 
 [[projects]]
   branch = "master"
@@ -197,18 +197,18 @@
     "html/charset",
   ]
   pruneopts = "UT"
-  revision = "24e19bdeb0f2d062d8e2640d50a7aaf2a7f80e7a"
+  revision = "a8b05e9114ab0cb08faec337c959aed24b68bf50"
 
 [[projects]]
   branch = "master"
-  digest = "1:d674897448caf197caa185f734eea882573eecffbcc82ab2d9361c8107edc24c"
+  digest = "1:c7179511b29f76f9185ce21ecaf4a97739849f20f56d99d80c9f2579dc245b2d"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "c3b328c6e5a763a2bfc82a48b4bd855037210934"
+  revision = "0c1ff786ef13daa914a3351c5e6b0321aed5960e"
 
 [[projects]]
   digest = "1:8a0baffd5559acaa560f854d7d525c02f4fec2d4f8a214398556fb661a10f6e0"

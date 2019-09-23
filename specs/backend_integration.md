@@ -1,5 +1,13 @@
  # Integration with NBH backend systems
 
+## Customers vs addresses
+
+At NBH side we talk about (KYC'ed) Customers. A User uses the Threefold app and identifies through the app. 
+In the app, a goldchain wallet can be created and addresses from private keys. These addresses need to be authorized by NBH so they know which customer they belong to.
+
+Open Questions:
+- Where are the links between NBH customers, customer threefold app id's and authorized addresses stored?
+
  ## Weight Account system
 
  The blockchain is master and there are reports available through an explorer ran on NBH systems to update the Weight account system balances.

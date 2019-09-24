@@ -20,6 +20,8 @@ Open Questions:
 ### Address Authorization
 ![Address authorization](Authorize_Addresses.svg)
 
+This is the logical flow. Technically it is more secure to put the process with the key for signing the authorization transaction on a seperate container that has no entrypoint from the outside.
+
  ## Weight Account system
 
  The blockchain is master and there are reports available through an explorer ran on NBH systems to update the Weight account system balances.

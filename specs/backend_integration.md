@@ -20,6 +20,8 @@ Open Questions:
 ### Address Authorization
 ![Address authorization](Authorize_Addresses.svg)
 
+If the KYC system updates the  BCDB with KYC valid date, the extra call to the KYC system can be dropped.
+
 This is the logical flow. Technically it is more secure to put the process with the key for signing the authorization transaction on a seperate container that has no entrypoint from the outside.
 
  ## Weight Account system

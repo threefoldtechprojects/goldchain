@@ -1,0 +1,5 @@
+@url = threefold.customeraddresses
+Customer** = (S)
+CustomerPubKey = S
+KYCUntil = D
+addresses** = (LS)

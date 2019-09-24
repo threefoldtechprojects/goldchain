@@ -15,6 +15,8 @@ Open Questions:
    - store it in the NBH systems
        - How long will this take?
    
+   Link: [A Jumpscale schema with the required data](customer_addresses.jsschema)
+
 
  ## Weight Account system
 

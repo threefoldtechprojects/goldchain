@@ -7,6 +7,12 @@ In the app, a goldchain wallet can be created and addresses from private keys. T
 
 Open Questions:
 - Where are the links between NBH customers, customer threefold app id's and authorized addresses stored?
+   Options are
+   - store it ourselves in bcdb
+       - Is bcdb production ready?
+   - store it in the weight account system
+       - How long will this take?
+   
 
  ## Weight Account system
 

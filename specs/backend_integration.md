@@ -10,7 +10,7 @@ Open Questions:
    Options are
    - store it ourselves in bcdb
        - Is bcdb production ready?
-   - store it in the weight account system
+   - store it in the NBH systems
        - How long will this take?
    
 

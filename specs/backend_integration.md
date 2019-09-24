@@ -17,6 +17,8 @@ Open Questions:
    
    Link: [A Jumpscale schema with the required data](customer_addresses.jsschema)
 
+### Address Authorization
+![Address authorization](Authorize_Addresses.svg)
 
  ## Weight Account system
 

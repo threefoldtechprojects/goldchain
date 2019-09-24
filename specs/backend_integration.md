@@ -14,7 +14,7 @@ The big question is, **how do we link the two?**
 At NBH side we talk about (KYC'ed) Customers. In the goldchain we have the notion of (authorized) addresses.
 
 A User uses the Threefold app and identifies through the app. 
-In the app, a goldchain wallet can be created and addresses from private keys. These addresses need to be authorized by NBH so they know which customer they belong to.
+In the app, a goldchain wallet can be created and addresses can be created  from private keys. These addresses need to be authorized by NBH so they know which customer they belong to.
 
 Open Questions:
 - Where are the links between NBH customers, customer threefold app id's and authorized addresses stored?

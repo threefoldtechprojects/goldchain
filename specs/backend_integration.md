@@ -1,5 +1,14 @@
  # Integration with NBH backend systems
 
+## App public key to customer
+
+The Threefold app has a private/public key pair so a user can uniquely identify itself and sign requests to the public NBH API's.
+
+At NBH side there is the notion of customers.
+
+The big question is, **how do we link the two?**
+
+
 ## Customers vs addresses
 
 At NBH side we talk about (KYC'ed) Customers. In the goldchain we have the notion of (authorized) addresses.

@@ -39,7 +39,7 @@ var (
 
 func getDaemonConstants() (*modules.DaemonConstants, error) {
 	var constants modules.DaemonConstants
-	err := httpClient.GetAPI("/daemon/constants", &constants)
+	err := httpClient.GetWithResponse("/daemon/constants", &constants)
 	if err != nil {
 		return nil, err
 	}

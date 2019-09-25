@@ -47,7 +47,7 @@ func updateAddressAuthorization(address types.UnlockHash, authorize bool) (types
 	if err != nil {
 		return types.TransactionID{}, err
 	}
-	err = httpClient.PostResp("/wallet/sign", string(data), &signedTx)
+	err = httpClient.PostWithResponse("/wallet/sign", string(data), &signedTx)
 	if err != nil {
 		return types.TransactionID{}, err
 	}
@@ -60,7 +60,7 @@ func updateAddressAuthorization(address types.UnlockHash, authorize bool) (types
 	}
 
 	var resp api.TransactionPoolPOST
-	err = httpClient.PostResp("/transactionpool/transactions", string(data), &resp)
+	err = httpClient.PostWithResponse("/transactionpool/transactions", string(data), &resp)
 	return resp.TransactionID, err
 }
 
@@ -86,7 +86,7 @@ func dripCoins(address types.UnlockHash, amount types.Currency) (types.Transacti
 	log.Println("[DEBUG] Dripping", amount.String(), "coins to address", address.String())
 
 	var resp api.WalletCoinsPOSTResp
-	err = httpClient.PostResp("/wallet/coins", string(data), &resp)
+	err = httpClient.PostWithResponse("/wallet/coins", string(data), &resp)
 	if err != nil {
 		log.Println("[ERROR] /wallet/coins - request body:", string(data))
 	}
@@ -97,7 +97,7 @@ func dripCoins(address types.UnlockHash, amount types.Currency) (types.Transacti
 // This by checking if a transaction with the provided unlockhash is in the transactionpool.
 func checkAuthStatusInProgress(address types.UnlockHash) error {
 	var txpoolResp api.TransactionPoolGET
-	err := httpClient.GetAPI(fmt.Sprintf("/transactionpool/transactions?unockhash=%s", address.String()), &txpoolResp)
+	err := httpClient.GetWithResponse(fmt.Sprintf("/transactionpool/transactions?unockhash=%s", address.String()), &txpoolResp)
 	if err != nil {
 		return err
 	}
@@ -110,7 +110,7 @@ func checkAuthStatusInProgress(address types.UnlockHash) error {
 // checkAuthStatusCompleted checks if an address is authorized else it returns an error.
 func checkAuthStatusCompleted(address types.UnlockHash) error {
 	var result authapi.GetAddressesAuthStateResponse
-	err := httpClient.GetAPI(fmt.Sprintf("/consensus/authcoin/status?addr=%s", address.String()), &result)
+	err := httpClient.GetWithResponse(fmt.Sprintf("/consensus/authcoin/status?addr=%s", address.String()), &result)
 	if err != nil {
 		return err
 	}

@@ -107,7 +107,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b153c61fa8bf4e753f94cb9436fef3545bf8e1aa6814fa1a8eba59582ae89335"
+  digest = "1:44351b736699d4a582be7a088feaac1fafd3323382af68f5c95cc7e1526716f7"
   name = "github.com/threefoldtech/rivine"
   packages = [
     "build",
@@ -137,7 +137,7 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "01f2a997d0f6cc1f7509c91125eadaf76f4a6b5a"
+  revision = "2eda462ecb3f733f2d20a9aab3b36dde6d0c4b79"
 
 [[projects]]
   branch = "master"
@@ -185,7 +185,7 @@
     "twofish",
   ]
   pruneopts = "UT"
-  revision = "9ee001bba392397c76f100a2d5b13afc86f167f1"
+  revision = "a832865fa7ada6126f4c6124ac49f71be71bff2a"
 
 [[projects]]
   branch = "master"
@@ -197,18 +197,18 @@
     "html/charset",
   ]
   pruneopts = "UT"
-  revision = "aa69164e4478b84860dc6769c710c699c67058a3"
+  revision = "c00fd9afed17cfdca9b3e1e3b8de7ef2b3f0347b"
 
 [[projects]]
   branch = "master"
-  digest = "1:1c2dd8ba87cd5ea5bd357f11a9c8a3d898b579294598671db1dcac25d19a9307"
+  digest = "1:8d3230f740762bbbfc24903fd5eae35d59c5aef26ae4274ab294fd7f77e386c2"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "2837fb4f24fee082b8c39b1a6dc9e0ed9f3fbd4f"
+  revision = "c990c680b611ac1aeb7d8f2af94a825f98d69720"
 
 [[projects]]
   digest = "1:8a0baffd5559acaa560f854d7d525c02f4fec2d4f8a214398556fb661a10f6e0"

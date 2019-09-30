@@ -5,8 +5,9 @@
  Questions:
 
  - Need a price
- -  Which are accepted
- -  How long is an offer valid?
+ - Which are accepted
+ - How long is an offer valid?
+ - Is the price determined at offer agreement or at at money receival?
  ## Regular money transfer
 
  The offer needs to be registered somewhere.

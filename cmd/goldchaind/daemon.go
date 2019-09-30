@@ -20,6 +20,8 @@ import (
 	"github.com/threefoldtech/rivine/extensions/authcointx"
 	authcointxapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
 
+	cfplugin "github.com/nbh-digital/goldchain/extensions/custodyfees"
+
 	"github.com/julienschmidt/httprouter"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/modules/blockcreator"
@@ -113,6 +115,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 		var cs modules.ConsensusSet
 		var mintingPlugin *minting.Plugin
 		var authCoinTxPlugin *authcointx.Plugin
+		var custodyFeesPlugin *cfplugin.Plugin
 
 		if moduleIdentifiers.Contains(daemon.ConsensusSetModule.Identifier()) {
 			printModuleIsLoading("consensus set")
@@ -156,6 +159,9 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			// add the HTTP handlers for the auth coin tx extension as well
 			authcointxapi.RegisterConsensusAuthCoinHTTPHandlers(router, authCoinTxPlugin)
 
+			// register the custody fees plugin
+			custodyFeesPlugin = cfplugin.NewPlugin()
+
 			// register the minting extension plugin
 			err = cs.RegisterPlugin(ctx, "minting", mintingPlugin)
 			if err != nil {
@@ -175,6 +181,18 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				err = authCoinTxPlugin.Close() //make sure any resources are released
 				if err != nil {
 					fmt.Println("Error during closing of the authCoinTxPlugin :", err)
+				}
+				cancel()
+				return
+			}
+
+			// register the CustodyFees extension plugin
+			err = cs.RegisterPlugin(ctx, "custodyfees", custodyFeesPlugin)
+			if err != nil {
+				servErrs <- fmt.Errorf("failed to register the custodyfees extension: %v", err)
+				err = custodyFeesPlugin.Close() //make sure any resources are released
+				if err != nil {
+					fmt.Println("Error during closing of the custodyFeesPlugin :", err)
 				}
 				cancel()
 				return

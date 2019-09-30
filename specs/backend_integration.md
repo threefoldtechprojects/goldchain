@@ -45,3 +45,6 @@ This is the logical flow. Technically it is more secure to put the process with 
  - Does the weight account system hold the link between customers and it's addresses on the chain?
  - If not all transactions should be in the report, only a date parameter is sufficient to generate the report, else, it's a daterange.
  
+## Gold acquisition
+
+This is discussed ina [seperate topic](gold_acquisition.md).

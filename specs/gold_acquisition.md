@@ -17,7 +17,7 @@
 Too slow, we are also not sure we will get the money.
 
 ## External payment provider
-This would allow us to easily accept fiat from credit cards in a first phase and guarantee us of getting the money.
+This would allow us to easily accept fiat from (credit) cards in a first phase and guarantee us of getting the money.
 We will check possibilities using Payment Service Providers (PSPs).
 
 

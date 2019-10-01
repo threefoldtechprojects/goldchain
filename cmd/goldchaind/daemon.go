@@ -160,7 +160,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			authcointxapi.RegisterConsensusAuthCoinHTTPHandlers(router, authCoinTxPlugin)
 
 			// register the custody fees plugin
-			custodyFeesPlugin = cfplugin.NewPlugin()
+			custodyFeesPlugin = cfplugin.NewPlugin(setupNetworkCfg.CustodyFeeConfig.MaxAllowedComputationTimeAdvance)
 
 			// register the minting extension plugin
 			err = cs.RegisterPlugin(ctx, "minting", mintingPlugin)
@@ -353,6 +353,11 @@ type setupNetworkConfig struct {
 	NetworkConfig        daemon.NetworkConfig
 	GenesisMintCondition types.UnlockConditionProxy
 	GenesisAuthCondition types.UnlockConditionProxy
+	CustodyFeeConfig     custodyFeeConfig
+}
+
+type custodyFeeConfig struct {
+	MaxAllowedComputationTimeAdvance types.Timestamp
 }
 
 // setupNetwork injects the correct chain constants and genesis nodes based on the chosen network,
@@ -378,6 +383,11 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 			},
 			GenesisMintCondition: config.GetDevnetGenesisMintCondition(),
 			GenesisAuthCondition: config.GetDevnetGenesisAuthCoinCondition(),
+			// TODO: validate if this delay is acceptable,
+			//       or make it lower/higher if needed
+			CustodyFeeConfig: custodyFeeConfig{
+				MaxAllowedComputationTimeAdvance: types.Timestamp(constants.BlockFrequency) * 5,
+			},
 		}, nil
 
 	case config.NetworkNameTestnet:
@@ -394,6 +404,11 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 			},
 			GenesisMintCondition: config.GetTestnetGenesisMintCondition(),
 			GenesisAuthCondition: config.GetTestnetGenesisAuthCoinCondition(),
+			// TODO: validate if this delay is acceptable,
+			//       or make it lower/higher if needed
+			CustodyFeeConfig: custodyFeeConfig{
+				MaxAllowedComputationTimeAdvance: types.Timestamp(constants.BlockFrequency) * 5,
+			},
 		}, nil
 
 	default:

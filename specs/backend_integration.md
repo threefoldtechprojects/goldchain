@@ -27,7 +27,7 @@ Open Questions:
    - store it in the NBH systems
        - How long will this take?
    
-  [A Jumpscale schema with the required data](customer_addresses.jsschema)
+[A Jumpscale schema with the required data](customer_addresses.jsschema)
 
 ### Address Authorization
 ![Address authorization](Authorize_Addresses.svg)

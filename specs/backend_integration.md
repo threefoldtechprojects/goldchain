@@ -8,9 +8,8 @@ At NBH side there is the notion of customers.
 
 The big question is, **how do we link the two?**
 
-The user can login into the onboarding UI using 3botlogin, at onboarding we can ask the customer if he already has a customerId from NBH. If so, the user doesn't have to do KYC. 
+The user can login into the onboarding UI using 3botlogin, at onboarding we can ask the customer if he already has a customerId from NBH. If so,  and approved,the user doesn't have to do KYC. 
 
-In the wallet the user should be able to request verification for a wallet address (this can be automatically), for this we need to store the wallet public key in the API (deriviate) together with the public key of the user itself (master key). At this moment this is not the case yet.
 
 
 ## Customers vs addresses
@@ -28,7 +27,7 @@ Open Questions:
    - store it in the NBH systems
        - How long will this take?
    
-   Link: [A Jumpscale schema with the required data](customer_addresses.jsschema)
+  [A Jumpscale schema with the required data](customer_addresses.jsschema)
 
 ### Address Authorization
 ![Address authorization](Authorize_Addresses.svg)
@@ -36,7 +35,8 @@ Open Questions:
 If the KYC system updates the  BCDB with KYC valid date, the extra call to the KYC system can be dropped.
 
 This is the logical flow. Technically it is more secure to put the process with the key for signing the authorization transaction on a seperate container that has no entrypoint from the outside.
-
+### Remarks
+- [Wallet remarks](wallet.md)
  ## Weight Account system
 
  The blockchain is master and there are reports available through an explorer ran on NBH systems to update the Weight account system balances.
@@ -51,4 +51,4 @@ This is the logical flow. Technically it is more secure to put the process with 
  
 ## Gold acquisition
 
-This is discussed ina [seperate topic](gold_acquisition.md).
+This is discussed in a [seperate topic](gold_acquisition.md).

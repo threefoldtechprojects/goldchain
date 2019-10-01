@@ -27,6 +27,7 @@ The links between NBH customers, customer threefold app id's and authorized addr
 
 
 [A Jumpscale schema with the required data](customer_addresses.jsschema)
+ 
  Questions:
  - Is bcdb production ready?
    

@@ -8,6 +8,10 @@ At NBH side there is the notion of customers.
 
 The big question is, **how do we link the two?**
 
+The user can login into the onboarding UI using 3botlogin, at onboarding we can ask the customer if he already has a customerId from NBH. If so, the user doesn't have to do KYC. 
+
+In the wallet the user should be able to request verification for a wallet address (this can be automatically), for this we need to store the wallet public key in the API (deriviate) together with the public key of the user itself (master key). At this moment this is not the case yet.
+
 
 ## Customers vs addresses
 

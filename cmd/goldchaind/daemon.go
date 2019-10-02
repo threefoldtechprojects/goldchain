@@ -21,6 +21,7 @@ import (
 	authcointxapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
 
 	cfplugin "github.com/nbh-digital/goldchain/extensions/custodyfees"
+	cfapi "github.com/nbh-digital/goldchain/extensions/custodyfees/api"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/threefoldtech/rivine/modules"
@@ -161,6 +162,8 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 
 			// register the custody fees plugin
 			custodyFeesPlugin = cfplugin.NewPlugin(setupNetworkCfg.CustodyFeeConfig.MaxAllowedComputationTimeAdvance)
+			// add the HTTP handlers for the custody fees extension as well
+			cfapi.RegisterConsensusCustodyFeesHTTPHandlers(router, cs, custodyFeesPlugin)
 
 			// register the minting extension plugin
 			err = cs.RegisterPlugin(ctx, "minting", mintingPlugin)
@@ -282,6 +285,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 
 			mintingapi.RegisterExplorerMintingHTTPHandlers(router, mintingPlugin)
 			authcointxapi.RegisterExplorerAuthCoinHTTPHandlers(router, authCoinTxPlugin)
+			cfapi.RegisterExplorerCustodyFeesHTTPHandlers(router, cs, custodyFeesPlugin)
 		}
 
 		fmt.Println("Setting up root HTTP API handler...")

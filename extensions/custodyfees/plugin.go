@@ -52,6 +52,27 @@ func NewPlugin(maxAllowedComputationTimeAdvance types.Timestamp) *Plugin {
 	}
 }
 
+// GetCoinOutputCreationTime returns the timestamp of creation of a coin output
+func (p *Plugin) GetCoinOutputCreationTime(id types.CoinOutputID) (types.Timestamp, error) {
+	var ts types.Timestamp
+	err := p.storage.View(func(bucket *bolt.Bucket) error {
+		coBucket := bucket.Bucket(bucketCoinOutputs)
+		if coBucket == nil {
+			return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs")
+		}
+		var err error
+		ts, err = getCoinOutputTime(coBucket, id)
+		if err != nil {
+			return fmt.Errorf("failed to look up creation timing of coin output %s: %v", id.String(), err)
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return ts, nil
+}
+
 // InitPlugin initializes the Bucket for the first time
 func (p *Plugin) InitPlugin(metadata *persist.Metadata, bucket *bolt.Bucket, storage modules.PluginViewStorage, unregisterCallback modules.PluginUnregisterCallback) (persist.Metadata, error) {
 	p.storage = storage
@@ -109,7 +130,7 @@ func (p *Plugin) ApplyTransaction(txn modules.ConsensusTransaction, bucket *pers
 	}
 	coBucket, err := bucket.Bucket(bucketCoinOutputs)
 	if err != nil {
-		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs")
+		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
 	}
 	btValue, err := rivbin.Marshal(txn.BlockTime)
 	if err != nil {
@@ -163,7 +184,7 @@ func (p *Plugin) RevertTransaction(txn modules.ConsensusTransaction, bucket *per
 	}
 	coBucket, err := bucket.Bucket(bucketCoinOutputs)
 	if err != nil {
-		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs")
+		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
 	}
 	for index := range txn.CoinOutputs {
 		coid := txn.CoinOutputID(uint64(index))
@@ -232,7 +253,7 @@ func (p *Plugin) validateCustodyFeePresent(tx modules.ConsensusTransaction, ctx 
 	// where all known coin outputs are linked to the timing they are created
 	coBucket, err := bucket.Bucket(bucketCoinOutputs)
 	if err != nil {
-		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs")
+		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
 	}
 
 	// computate required custody fee
@@ -242,7 +263,7 @@ func (p *Plugin) validateCustodyFeePresent(tx modules.ConsensusTransaction, ctx 
 	for _, ci := range tx.CoinInputs {
 		ciTS, err := getCoinOutputTime(coBucket, ci.ParentID)
 		if err != nil {
-			return fmt.Errorf("failed to look up creation timing of coin input %s", ci.ParentID.String())
+			return fmt.Errorf("failed to look up creation timing of coin input %s: %v", ci.ParentID.String(), err)
 		}
 		if ciTS > ctx.BlockTime {
 			return fmt.Errorf("spent coin output creation time is in the future, this is invalid: %d > %d", ciTS, ctx.BlockTime)

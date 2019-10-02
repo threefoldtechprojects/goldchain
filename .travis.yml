@@ -1,0 +1,9 @@
+jobs:
+  include:
+    - stage: test
+      language: go
+      go: 1.12.x
+      install:
+        - go get -u github.com/gordonklaus/ineffassign
+      script:
+        - make vet ineffassign test

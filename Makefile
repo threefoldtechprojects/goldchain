@@ -95,4 +95,7 @@ check-%:
 lint: fmt
 	goimports -w $(pkgs)
 
-.PHONY: all test fmt generate vet install install-profile-std install-std embed-explorer-version explorer release-explorer release-flist archive release-dir get_hub_jwt check-% lint
+ineffassign:
+	ineffassign $(pkgs)
+
+.PHONY: all test fmt generate vet install install-profile-std install-std embed-explorer-version explorer release-explorer release-flist archive release-dir get_hub_jwt check-% lint ineffassign

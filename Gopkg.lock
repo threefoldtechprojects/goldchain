@@ -107,7 +107,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c4020b17cf58fec8102087f3c1c5f2937590b7d2bffbb647b6a2b7cd0c9a8839"
+  digest = "1:897433749ca9a844da4b6282ab993c1780133f25cbb2f20474f6f2fda9a708ec"
   name = "github.com/threefoldtech/rivine"
   packages = [
     "build",
@@ -124,7 +124,6 @@
     "modules/explorer",
     "modules/gateway",
     "modules/transactionpool",
-    "modules/wallet",
     "persist",
     "pkg/api",
     "pkg/cli",
@@ -247,6 +246,7 @@
     "github.com/rivine/bbolt",
     "github.com/spf13/cobra",
     "github.com/threefoldtech/rivine/build",
+    "github.com/threefoldtech/rivine/crypto",
     "github.com/threefoldtech/rivine/extensions/authcointx",
     "github.com/threefoldtech/rivine/extensions/authcointx/api",
     "github.com/threefoldtech/rivine/extensions/authcointx/client",
@@ -259,7 +259,6 @@
     "github.com/threefoldtech/rivine/modules/explorer",
     "github.com/threefoldtech/rivine/modules/gateway",
     "github.com/threefoldtech/rivine/modules/transactionpool",
-    "github.com/threefoldtech/rivine/modules/wallet",
     "github.com/threefoldtech/rivine/persist",
     "github.com/threefoldtech/rivine/pkg/api",
     "github.com/threefoldtech/rivine/pkg/cli",
@@ -267,6 +266,7 @@
     "github.com/threefoldtech/rivine/pkg/daemon",
     "github.com/threefoldtech/rivine/pkg/encoding/rivbin",
     "github.com/threefoldtech/rivine/profile",
+    "github.com/threefoldtech/rivine/sync",
     "github.com/threefoldtech/rivine/types",
   ]
   solver-name = "gps-cdcl"

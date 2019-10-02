@@ -22,6 +22,7 @@ import (
 
 	cfplugin "github.com/nbh-digital/goldchain/extensions/custodyfees"
 	cfapi "github.com/nbh-digital/goldchain/extensions/custodyfees/api"
+	"github.com/nbh-digital/goldchain/modules/wallet"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/threefoldtech/rivine/modules"
@@ -30,7 +31,6 @@ import (
 	"github.com/threefoldtech/rivine/modules/explorer"
 	"github.com/threefoldtech/rivine/modules/gateway"
 	"github.com/threefoldtech/rivine/modules/transactionpool"
-	"github.com/threefoldtech/rivine/modules/wallet"
 	rivineapi "github.com/threefoldtech/rivine/pkg/api"
 	"github.com/threefoldtech/rivine/pkg/daemon"
 )

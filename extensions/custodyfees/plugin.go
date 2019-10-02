@@ -81,7 +81,7 @@ func (p *Plugin) InitPlugin(metadata *persist.Metadata, bucket *bolt.Bucket, sto
 		coinOutputsBucket := bucket.Bucket([]byte(bucketCoinOutputs))
 		if coinOutputsBucket == nil {
 			var err error
-			coinOutputsBucket, err = bucket.CreateBucket([]byte(bucketCoinOutputs))
+			_, err = bucket.CreateBucket([]byte(bucketCoinOutputs))
 			if err != nil {
 				return persist.Metadata{}, fmt.Errorf("failed to create coin outputs bucket: %v", err)
 			}

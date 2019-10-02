@@ -1,4 +1,4 @@
-# goldchain
+# goldchain [![Build Status](https://travis-ci.com/nbh-digital/goldchain.svg?branch=master)](https://travis-ci.com/nbh-digital/goldchain)
 
 > :warning: **WARNING**: software is still in development. It is not yet meant for use in production.
 > Standard network is disabled at the moment.

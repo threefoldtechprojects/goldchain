@@ -23,6 +23,7 @@ import (
 	cfplugin "github.com/nbh-digital/goldchain/extensions/custodyfees"
 	cfapi "github.com/nbh-digital/goldchain/extensions/custodyfees/api"
 	"github.com/nbh-digital/goldchain/modules/wallet"
+	goldchainapi "github.com/nbh-digital/goldchain/pkg/api"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/threefoldtech/rivine/modules"
@@ -274,7 +275,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				cancel()
 				return
 			}
-			rivineapi.RegisterExplorerHTTPHandlers(router, cs, e, tpool)
+			goldchainapi.RegisterExplorerHTTPHandlers(router, cs, e, tpool, custodyFeesPlugin)
 			defer func() {
 				fmt.Println("Closing explorer...")
 				err := e.Close()

@@ -31,6 +31,24 @@ function readableDifficulty(hashes) {
 	return addCommasToNumber((hashes / 1)) + ' BS';
 }
 
+// readableDuration takes a duration in seconds and returns it in a more human readable format
+function readableDuration(seconds) {
+	var levels = [
+		[Math.floor(seconds / 31536000), 'years'],
+		[Math.floor((seconds % 31536000) / 86400), 'days'],
+		[Math.floor(((seconds % 31536000) % 86400) / 3600), 'hours'],
+		[Math.floor((((seconds % 31536000) % 86400) % 3600) / 60), 'minutes'],
+		[(((seconds % 31536000) % 86400) % 3600) % 60, 'seconds'],
+	];
+	var returntext = '';
+
+	for (var i = 0, max = levels.length; i < max; i++) {
+		if ( levels[i][0] === 0 ) continue;
+		returntext += ', ' + levels[i][0] + ' ' + (levels[i][0] === 1 ? levels[i][1].substr(0, levels[i][1].length-1): levels[i][1]);
+	};
+	return returntext.trim().substr(2);
+}
+
 // linkHash takes a hash and returns a link that has the hash as text and
 // leads to the hashes hash page.
 function linkHash(domParent, hash, label) {

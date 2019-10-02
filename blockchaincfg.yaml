@@ -19,6 +19,7 @@ generation:
     - docs/*
     - frontend/explorer/public/assets/icon.{png,ico}
     - frontend/explorer/public/assets/mention.txt
+    - frontend/explorer/public/js/{hash,main}.js
     - cmd/goldchaind/daemon.go
 blockchain:
   name: goldchain

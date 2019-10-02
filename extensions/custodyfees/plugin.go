@@ -38,7 +38,12 @@ type (
 )
 
 // TODO:
-// - apply and revert coin inputs to save space for coin outputs already spent
+// - ensure plugin is aware of minerfee payouts at all times... (Rivine change that requires update in extensions as well as tfchain!!!)
+//		- this can be done by introducing Apply/Revert BlockHeader...
+//			(this is required as actual applied txs are done via ApplyTransaction, not via ApplyBlock, at least in the regular path...)
+// - store more info: spentTime (== computationRegistration, if 0 -> unspent), value
+// 		- also return creation time
+// 		- improve explorer backend based on this change
 
 // NewPlugin creates a new CustodyFee Plugin,
 // also registering the condition type
@@ -102,7 +107,25 @@ func (p *Plugin) ApplyBlock(block modules.ConsensusBlock, bucket *persist.LazyBo
 	if bucket == nil {
 		return errors.New("custodyfee bucket does not exist")
 	}
-	var err error
+	coBucket, err := bucket.Bucket(bucketCoinOutputs)
+	if err != nil {
+		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
+	}
+	btValue, err := rivbin.Marshal(block.Timestamp)
+	if err != nil {
+		return fmt.Errorf("failed to rivbin marshal block time: %v", err)
+	}
+	for idx := range block.MinerPayouts {
+		mpid := types.CoinOutputID(block.MinerPayoutID(uint64(idx)))
+		bMPID, err := rivbin.Marshal(mpid)
+		if err != nil {
+			return fmt.Errorf("failed to rivbin marshal (miner payout ID as) coin output ID: %v", err)
+		}
+		err = coBucket.Put(bMPID, btValue)
+		if err != nil {
+			return fmt.Errorf("failed to link (miner payout ID as) coin output's ID to its block time: %v", err)
+		}
+	}
 	for idx, txn := range block.Transactions {
 		cTxn := modules.ConsensusTransaction{
 			Transaction:            txn,
@@ -112,7 +135,7 @@ func (p *Plugin) ApplyBlock(block modules.ConsensusBlock, bucket *persist.LazyBo
 			SpentCoinOutputs:       block.SpentCoinOutputs,
 			SpentBlockStakeOutputs: block.SpentBlockStakeOutputs,
 		}
-		err = p.ApplyTransaction(cTxn, bucket)
+		err = p.applyTransaction(cTxn, coBucket, btValue)
 		if err != nil {
 			return err
 		}
@@ -125,9 +148,6 @@ func (p *Plugin) ApplyTransaction(txn modules.ConsensusTransaction, bucket *pers
 	if bucket == nil {
 		return errors.New("custodyfee bucket does not exist")
 	}
-	if len(txn.CoinOutputs) == 0 {
-		return nil // nothing to do
-	}
 	coBucket, err := bucket.Bucket(bucketCoinOutputs)
 	if err != nil {
 		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
@@ -136,13 +156,20 @@ func (p *Plugin) ApplyTransaction(txn modules.ConsensusTransaction, bucket *pers
 	if err != nil {
 		return fmt.Errorf("failed to rivbin marshal block time: %v", err)
 	}
+	return p.applyTransaction(txn, coBucket, btValue)
+}
+
+func (p *Plugin) applyTransaction(txn modules.ConsensusTransaction, coBucket *bolt.Bucket, blockTime []byte) error {
+	if len(txn.CoinOutputs) == 0 {
+		return nil // nothing to do
+	}
 	for index := range txn.CoinOutputs {
 		coid := txn.CoinOutputID(uint64(index))
 		bCOID, err := rivbin.Marshal(coid)
 		if err != nil {
 			return fmt.Errorf("failed to rivbin marshal coin output ID: %v", err)
 		}
-		err = coBucket.Put(bCOID, btValue)
+		err = coBucket.Put(bCOID, blockTime)
 		if err != nil {
 			return fmt.Errorf("failed to link coin output's ID to its block time: %v", err)
 		}
@@ -155,8 +182,22 @@ func (p *Plugin) RevertBlock(block modules.ConsensusBlock, bucket *persist.LazyB
 	if bucket == nil {
 		return errors.New("mint conditions bucket does not exist")
 	}
-	// collect all one-per-block mint conditions
 	var err error
+	coBucket, err := bucket.Bucket(bucketCoinOutputs)
+	if err != nil {
+		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
+	}
+	for idx := range block.MinerPayouts {
+		mpid := types.CoinOutputID(block.MinerPayoutID(uint64(idx)))
+		bMPID, err := rivbin.Marshal(mpid)
+		if err != nil {
+			return fmt.Errorf("failed to rivbin marshal (miner payout ID as) coin output ID: %v", err)
+		}
+		err = coBucket.Delete(bMPID)
+		if err != nil {
+			return fmt.Errorf("failed to unlink (miner payout ID as) coin output's ID from its block time: %v", err)
+		}
+	}
 	for idx, txn := range block.Transactions {
 		cTxn := modules.ConsensusTransaction{
 			Transaction:            txn,
@@ -166,7 +207,7 @@ func (p *Plugin) RevertBlock(block modules.ConsensusBlock, bucket *persist.LazyB
 			SpentCoinOutputs:       block.SpentCoinOutputs,
 			SpentBlockStakeOutputs: block.SpentBlockStakeOutputs,
 		}
-		err = p.RevertTransaction(cTxn, bucket)
+		err = p.revertTransaction(cTxn, coBucket)
 		if err != nil {
 			return err
 		}
@@ -179,12 +220,16 @@ func (p *Plugin) RevertTransaction(txn modules.ConsensusTransaction, bucket *per
 	if bucket == nil {
 		return errors.New("custodyfee bucket does not exist")
 	}
-	if len(txn.CoinOutputs) == 0 {
-		return nil // nothing to do
-	}
 	coBucket, err := bucket.Bucket(bucketCoinOutputs)
 	if err != nil {
 		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
+	}
+	return p.revertTransaction(txn, coBucket)
+}
+
+func (p *Plugin) revertTransaction(txn modules.ConsensusTransaction, coBucket *bolt.Bucket) error {
+	if len(txn.CoinOutputs) == 0 {
+		return nil // nothing to do
 	}
 	for index := range txn.CoinOutputs {
 		coid := txn.CoinOutputID(uint64(index))

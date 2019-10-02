@@ -47,6 +47,9 @@ function appendUnknownTransaction(infoBody, explorerTransaction, confirmed) {
 	if (confirmed) {
 		var doms = appendStat(table, 'Block Height', '');
 		linkHeight(doms[2], explorerTransaction.height);
+		if (explorerTransaction.timestamp) {
+			appendStat(table, 'Block Time', formatUnixTime(explorerTransaction.timestamp));
+		}
 		appendStat(table, 'Confirmations', ctx.height - explorerTransaction.height + 1);
 	} else {
 		doms = appendStat(table, 'Block Height', 'unconfirmed');
@@ -69,6 +72,9 @@ function appendV0Transaction(infoBody, explorerTransaction, confirmed) {
 	if (confirmed) {
 		var doms = appendStat(table, 'Block Height', '');
 		linkHeight(doms[2], explorerTransaction.height);
+		if (explorerTransaction.timestamp) {
+			appendStat(table, 'Block Time', formatUnixTime(explorerTransaction.timestamp));
+		}
 		appendStat(table, 'Confirmations', ctx.height - explorerTransaction.height + 1);
 	} else {
 		doms = appendStat(table, 'Block Height', 'unconfirmed');
@@ -109,7 +115,9 @@ function appendV0Transaction(infoBody, explorerTransaction, confirmed) {
 				address = explorerTransaction.coininputoutputs[i].condition.data.condition.data.unlockhash;
 			}
 			linkHash(doms[2], address);
-			appendStat(table, 'Value', readableCoins(explorerTransaction.coininputoutputs[i].value));
+			appendStat(table, 'Creation Value', readableCoins(explorerTransaction.coininputoutputs[i].value));
+			appendStat(table, 'Spent Value', readableCoins(explorerTransaction.coininputoutputs[i].custody.value));
+			appendStat(table, 'Paid Custody Fee', readableCoins(explorerTransaction.coininputoutputs[i].custody.fee));
 
 			appendStatHeader(table, 'Unlocker');
 			appendStat(table, 'Unlock type', explorerTransaction.rawtransaction.data.coininputs[i].unlocker.type);
@@ -132,7 +140,15 @@ function appendV0Transaction(infoBody, explorerTransaction, confirmed) {
 			linkHash(doms[2], explorerTransaction.coinoutputids[i]);
 			doms = appendStat(table, 'Address', '');
 			linkHash(doms[2], explorerTransaction.rawtransaction.data.coinoutputs[i].unlockhash);
-			appendStat(table, 'Value', readableCoins(explorerTransaction.rawtransaction.data.coinoutputs[i].value));
+			appendStat(table, 'Creation Value', readableCoins(explorerTransaction.rawtransaction.data.coinoutputs[i].value));
+			if (explorerTransaction.coinoutputcustodyfees && explorerTransaction.coinoutputcustodyfees.length > 0 && explorerTransaction.coinoutputcustodyfees[i].age > 0) {
+				appendStat(table, 'State', 'Unspent')
+				appendStat(table, 'Age', readableDuration(explorerTransaction.coinoutputcustodyfees[i].age));
+				appendStat(table, 'Custody Fee To Be Paid', readableCoins(explorerTransaction.coinoutputcustodyfees[i].fee));
+				appendStat(table, 'Spendable Value', readableCoins(explorerTransaction.coinoutputcustodyfees[i].value));
+			} else {
+				appendStat(table, 'State', 'Spent')
+			}
 			infoBody.appendChild(table);
 		}
 	}
@@ -204,6 +220,9 @@ function appendV1Transaction(infoBody, explorerTransaction, confirmed) {
 	if (confirmed) {
 		var doms = appendStat(table, 'Block Height', '');
 		linkHeight(doms[2], explorerTransaction.height);
+		if (explorerTransaction.timestamp) {
+			appendStat(table, 'Block Time', formatUnixTime(explorerTransaction.timestamp));
+		}
 		doms = appendStat(table, 'Block ID', '');
 		linkHash(doms[2], explorerTransaction.parent);
 		appendStat(table, 'Confirmations', ctx.height - explorerTransaction.height + 1);
@@ -277,11 +296,22 @@ function appendV1Transaction(infoBody, explorerTransaction, confirmed) {
 				case 4:
 					f = addV1T4Output;
 					break;
+				case 128:
+					f = addV1T128Output;
+					break;
 				default:
 					continue;
 			}
 			var outputTable = createStatsTable()
 			f(ctx, outputTable, explorerTransaction, i, 'coins', coinoutputs);
+			if (explorerTransaction.coinoutputcustodyfees && explorerTransaction.coinoutputcustodyfees.length > 0 && explorerTransaction.coinoutputcustodyfees[i].age > 0) {
+				appendStat(outputTable, 'State', 'Unspent')
+				appendStat(outputTable, 'Age', readableDuration(explorerTransaction.coinoutputcustodyfees[i].age));
+				appendStat(outputTable, 'Custody Fee To Be Paid', readableCoins(explorerTransaction.coinoutputcustodyfees[i].fee));
+				appendStat(outputTable, 'Spendable Value', readableCoins(explorerTransaction.coinoutputcustodyfees[i].value));
+			} else {
+				appendStat(outputTable, 'State', 'Spent')
+			}
 			infoBody.appendChild(outputTable)
 		}
 	}
@@ -362,6 +392,9 @@ function appendV128Transaction(infoBody, explorerTransaction, confirmed) {
 	if (confirmed) {
 		var doms = appendStat(table, 'Block Height', '');
 		linkHeight(doms[2], explorerTransaction.height);
+		if (explorerTransaction.timestamp) {
+			appendStat(table, 'Block Time', formatUnixTime(explorerTransaction.timestamp));
+		}
 		doms = appendStat(table, 'Block ID', '');
 		linkHash(doms[2], explorerTransaction.parent);
 		appendStat(table, 'Confirmations', ctx.height - explorerTransaction.height + 1);
@@ -413,6 +446,9 @@ function appendV128Transaction(infoBody, explorerTransaction, confirmed) {
 		case 4:
 			f = addV4Condition;
 			break;
+		case 128:
+			f = addV1T128Output;
+			break;
 		default:
 			f = addUnknownCondition;
 	}
@@ -453,6 +489,9 @@ function appendV129Transaction(infoBody, explorerTransaction, confirmed) {
 	if (confirmed) {
 		var doms = appendStat(table, 'Block Height', '');
 		linkHeight(doms[2], explorerTransaction.height);
+		if (explorerTransaction.timestamp) {
+			appendStat(table, 'Block Time', formatUnixTime(explorerTransaction.timestamp));
+		}
 		doms = appendStat(table, 'Block ID', '');
 		linkHash(doms[2], explorerTransaction.parent);
 		appendStat(table, 'Confirmations', ctx.height - explorerTransaction.height + 1);
@@ -509,6 +548,9 @@ function appendV129Transaction(infoBody, explorerTransaction, confirmed) {
 			case 4:
 				f = addV1T4Output;
 				break;
+			case 128:
+				f = addV1T128Output;
+				break;
 			default:
 				continue;
 		}
@@ -550,6 +592,9 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 	if (confirmed) {
 		var doms = appendStat(table, 'Block Height', '');
 		linkHeight(doms[2], explorerTransaction.height);
+		if (explorerTransaction.timestamp) {
+			appendStat(table, 'Block Time', formatUnixTime(explorerTransaction.timestamp));
+		}
 		doms = appendStat(table, 'Block ID', '');
 		linkHash(doms[2], explorerTransaction.parent);
 		appendStat(table, 'Confirmations', ctx.height - explorerTransaction.height + 1);
@@ -621,6 +666,9 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 			case 4:
 				f = addV1T4Output;
 				break;
+			case 128:
+				f = addV1T128Output;
+				break;
 		}
 		if (f !== null) {
 			var outputTable = createStatsTable()
@@ -673,6 +721,9 @@ function appendV176Transaction(infoBody, explorerTransaction, confirmed) {
 	if (confirmed) {
 		var doms = appendStat(table, 'Block Height', '');
 		linkHeight(doms[2], explorerTransaction.height);
+		if (explorerTransaction.timestamp) {
+			appendStat(table, 'Block Time', formatUnixTime(explorerTransaction.timestamp));
+		}
 		doms = appendStat(table, 'Block ID', '');
 		linkHash(doms[2], explorerTransaction.parent);
 		appendStat(table, 'Confirmations', ctx.height - explorerTransaction.height + 1);
@@ -749,6 +800,9 @@ function appendV177Transaction(infoBody, explorerTransaction, confirmed) {
 	if (confirmed) {
 		var doms = appendStat(table, 'Block Height', '');
 		linkHeight(doms[2], explorerTransaction.height);
+		if (explorerTransaction.timestamp) {
+			appendStat(table, 'Block Time', formatUnixTime(explorerTransaction.timestamp));
+		}
 		doms = appendStat(table, 'Block ID', '');
 		linkHash(doms[2], explorerTransaction.parent);
 		appendStat(table, 'Confirmations', ctx.height - explorerTransaction.height + 1);
@@ -800,6 +854,9 @@ function appendV177Transaction(infoBody, explorerTransaction, confirmed) {
 		case 4:
 			f = addV4Condition;
 			break;
+		case 128:
+			f = addV1T128Output;
+			break;
 		default:
 			f = addUnknownCondition;
 	}
@@ -842,18 +899,23 @@ function addV1T1Input(infoBody, explorerTransaction, i, type) {
 		unlockhash = "000000000000000000000000000000000000000000000000000000000000000000000000000000";
 	}
 	linkHash(doms[2], unlockhash);
-	var amount = explorerTransaction[inputoutputspecifier][i].value;
+	var inputValue = explorerTransaction[inputoutputspecifier][i].value;
+	var amount = inputValue;
 	if (type === 'coins') {
 		amount = readableCoins(amount);
+		appendStat(table, 'Creation Value', amount);
+		inputValue = explorerTransaction[inputoutputspecifier][i].custody.value;
+		appendStat(table, 'Spent Value', inputValue);
+		appendStat(table, 'Paid Custody Fee', explorerTransaction[inputoutputspecifier][i].custody.fee);
+	} else {
+		appendStat(table, 'Value', amount);
 	}
-	appendStat(table, 'Value', amount);
-
 
 	appendStatHeader(table, 'Fulfillment');
 	addV1Fulfillment(table, explorerTransaction.rawtransaction.data[inputspecifier][i].fulfillment)
 	infoBody.appendChild(table);
 
-	return {amount: explorerTransaction[inputoutputspecifier][i].value};
+	return {amount: inputValue};
 }
 
 function addV1Fulfillment(table, fulfillment) {
@@ -880,18 +942,24 @@ function addV1T2Input(infoBody, explorerTransaction, i, type) {
 	} else {
 		linkHash(doms[2], explorerTransaction[inputoutputspecifier][i].condition.data.receiver);
 	}
-	var amount = explorerTransaction[inputoutputspecifier][i].value;
+
+	var inputValue = explorerTransaction[inputoutputspecifier][i].value;
+	var amount = inputValue;
 	if (type === 'coins') {
 		amount = readableCoins(amount);
+		appendStat(table, 'Creation Value', amount);
+		inputValue = explorerTransaction[inputoutputspecifier][i].custody.value;
+		appendStat(table, 'Spent Value', inputValue);
+		appendStat(table, 'Paid Custody Fee', explorerTransaction[inputoutputspecifier][i].custody.fee);
+	} else {
+		appendStat(table, 'Value', amount);
 	}
-	appendStat(table, 'Value', amount);
-
 
 	appendStatHeader(table, 'Fulfillment');
 	addV2Fulfillment(table, explorerTransaction.rawtransaction.data[inputspecifier][i].fulfillment);
 	infoBody.appendChild(table);
 
-	return {amount: explorerTransaction[inputoutputspecifier][i].value};
+	return {amount: inputValue};
 }
 
 function addV2Fulfillment(table, fulfillment) {
@@ -912,11 +980,17 @@ function addV1T3Input(infoBody, explorerTransaction, i, type) {
 	var doms = appendStat(table, 'ID', '');
 	linkHash(doms[2], explorerTransaction.rawtransaction.data[inputspecifier][i].parentid);
 
-	var amount = explorerTransaction[inputoutputspecifier][i].value;
+	var inputValue = explorerTransaction[inputoutputspecifier][i].value;
+	var amount = inputValue;
 	if (type === 'coins') {
 		amount = readableCoins(amount);
+		appendStat(table, 'Creation Value', amount);
+		inputValue = explorerTransaction[inputoutputspecifier][i].custody.value;
+		appendStat(table, 'Spent Value', inputValue);
+		appendStat(table, 'Paid Custody Fee', explorerTransaction[inputoutputspecifier][i].custody.fee);
+	} else {
+		appendStat(table, 'Value', amount);
 	}
-	appendStat(table, 'Value', amount);
 
 	appendStatHeader(table, 'Condition');
 	appendStat(table, 'Type', explorerTransaction[inputoutputspecifier][i].condition.type);
@@ -938,7 +1012,7 @@ function addV1T3Input(infoBody, explorerTransaction, i, type) {
 	addV3Fulfillment(table, explorerTransaction.rawtransaction.data[inputspecifier][i].fulfillment)
 	infoBody.appendChild(table);
 
-	return {amount: explorerTransaction[inputoutputspecifier][i].value};
+	return {amount: inputValue};
 }
 
 function addV3Fulfillment(table, fulfillment) {
@@ -974,10 +1048,12 @@ function addV1NilOutput(_ctx, table, explorerTransaction, i, type, outputs) {
 	}
 
 	var amount = outputs[i].value
+	var label = 'Value'
 	if (type === 'coins') {
+		label = 'Creation Value'
 		amount = readableCoins(amount);
 	}
-	appendStat(table, 'Value', amount);
+	appendStat(table, label, amount);
 	return {
 		value: outputs[i].value,
 		locked: locked,
@@ -1004,10 +1080,12 @@ function addV1T1Output(_ctx, table, explorerTransaction, i, type, outputs) {
 	var locked = addV1Condition(_ctx, table, outputs[i].condition.data);
 
 	var amount = outputs[i].value
+	var label = 'Value'
 	if (type === 'coins') {
+		label = 'Creation Value'
 		amount = readableCoins(amount);
 	}
-	appendStat(table, 'Value', amount);
+	appendStat(table, label, amount);
 	return {
 		value: outputs[i].value,
 		locked: locked,
@@ -1037,10 +1115,12 @@ function addV1T2Output(_ctx, table, explorerTransaction, i, type, outputs) {
 	var locked = addV2Condition(_ctx, table, conditiondata, unlockhash);
 
 	var amount = outputs[i].value
+	var label = 'Value'
 	if (type === 'coins') {
+		label = 'Creation Value'
 		amount = readableCoins(amount);
 	}
-	appendStat(table, 'Value', amount);
+	appendStat(table, label, amount);
 	return {
 		value: outputs[i].value,
 		locked: locked,
@@ -1086,10 +1166,12 @@ function addV1T3Output(ctx, table, explorerTransaction, i, type, outputs) {
 
 	var output = outputs[i];
 	var amount = output.value;
+	var label = 'Value'
 	if (type === 'coins') {
+		label = 'Creation Value'
 		amount = readableCoins(amount);
 	}
-	appendStat(table, 'Value', amount);
+	appendStat(table, label, amount);
 
 	return {
 		value: output.value,
@@ -1154,10 +1236,12 @@ function addV1T4Output(_ctx, table, explorerTransaction, i, type, outputs) {
 	var locked = addV4Condition(_ctx, table, conditiondata, unlockhash);
 
 	var amount = output.value
+	var label = 'Value'
 	if (type === 'coins') {
+		label = 'Creation Value'
 		amount = readableCoins(amount);
 	}
-	appendStat(table, 'Value', amount);
+	appendStat(table, label, amount);
 
 	return {
 		value: output.value,
@@ -1175,6 +1259,40 @@ function addV4Condition(_ctx, table, conditiondata, unlockhash) {
 		linkHash(doms[2], conditiondata.unlockhashes[i]);
 	}
 	appendStat(table, 'Minimum Signature Count', conditiondata.minimumsignaturecount);
+	return false;
+}
+
+// Custody Fee Outputs/Conditions
+
+function addV1T128Output(_ctx, table, explorerTransaction, i, type, outputs) {
+	var outputidspecifier = getOutputIDSpecifier(type);
+
+	var doms = appendStat(table, 'ID', '');
+	linkHash(doms[2], explorerTransaction[outputidspecifier][i]);
+
+	if (outputs == null) {
+		var outputspecifier = getOutputSpecifier(type);
+		outputs = explorerTransaction.rawtransaction.data[outputspecifier];
+	}
+
+	var locked = addV128Condition(_ctx, table, outputs[i].condition.data);
+
+	var amount = outputs[i].value
+	var label = 'Value'
+	if (type === 'coins') {
+		label = 'Creation Value'
+		amount = readableCoins(amount);
+	}
+	appendStat(table, label, amount);
+	return {
+		value: outputs[i].value,
+		locked: locked,
+	};
+}
+
+function addV128Condition(_ctx, table, conditiondata) {
+	doms = appendStat(table, 'Custody Fee Void Address', '800000000000000000000000000000000000000000000000000000000000000000af7bedde1fea');
+	appendStat(table, 'Custody Fee Computation Time', conditiondata.computationtime);
 	return false;
 }
 
@@ -1272,6 +1390,9 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 						if (confirmed) {
 							var doms = appendStat(table, 'Block Height', '');
 							linkHeight(doms[2], explorerHash.transactions[i].height);
+							if (explorerHash.transactions[i].timestamp) {
+								appendStat(table, 'Block Time', formatUnixTime(explorerHash.transactions[i].timestamp));
+							}
 						} else {
 							appendStat(table, 'Block Height', 'unconfirmed');
 						}
@@ -1286,7 +1407,7 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 							value: value,
 							confirmed: confirmed,
 						});
-						appendStat(table, 'Value', readableCoins(value));
+						appendStat(table, 'Creation Value', readableCoins(value));
 						tables.push(table);
 						scoids.push(explorerHash.transactions[i].coinoutputids[j]);
 						scoidMatches.push(false);
@@ -1303,6 +1424,9 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 						if (confirmed) {
 							var doms = appendStat(table, 'Block Height', '');
 							linkHeight(doms[2], explorerHash.transactions[i].height);
+							if (explorerHash.transactions[i].timestamp) {
+								appendStat(table, 'Block Time', formatUnixTime(explorerHash.transactions[i].timestamp));
+							}
 						} else {
 							appendStat(table, 'Block Height', 'unconfirmed');
 						}
@@ -1326,6 +1450,9 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 								break;
 							case 4:
 								f = addV1T4Output;
+								break;
+							case 128:
+								f = addV1T128Output;
 								break;
 							default:
 								// ignore unknown
@@ -1455,6 +1582,9 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 						if (confirmed) {
 							var doms = appendStat(table, 'Block Height', '');
 							linkHeight(doms[2], explorerHash.transactions[i].height);
+							if (explorerHash.transactions[i].timestamp) {
+								appendStat(table, 'Block Time', formatUnixTime(explorerHash.transactions[i].timestamp));
+							}
 						} else {
 							appendStat(table, 'Block Height', 'unconfirmed');
 						}
@@ -1486,6 +1616,9 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 						if (confirmed) {
 							var doms = appendStat(table, 'Block Height', '');
 							linkHeight(doms[2], explorerHash.transactions[i].height);
+							if (explorerHash.transactions[i].timestamp) {
+								appendStat(table, 'Block Time', formatUnixTime(explorerHash.transactions[i].timestamp));
+							}
 						} else {
 							appendStat(table, 'Block Height', 'unconfirmed');
 						}
@@ -1508,6 +1641,9 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 								break;
 							case 4:
 								f = addV1T4Output;
+								break;
+							case 128:
+								f = addV1T128Output;
 								break;
 							default:
 								// ignore unknown
@@ -1829,7 +1965,18 @@ function appendCoinOutputTables(infoBody, hash, explorerHash) {
 			linkHash(doms[2], explorerHash.blocks[0].blockid);
 			doms = appendStat(table, 'Address', '');
 			linkHash(doms[2], explorerHash.blocks[0].rawblock.minerpayouts[i].unlockhash);
-			appendStat(table, 'Value', readableCoins(explorerHash.blocks[0].rawblock.minerpayouts[i].value));
+			appendStat(table, 'Creation Value', readableCoins(explorerHash.blocks[0].rawblock.minerpayouts[i].value));
+			console.log(explorerHash.blocks[0].minerpayoutcustodyfees)
+			if (explorerHash.blocks[0].minerpayoutcustodyfees && explorerHash.blocks[0].minerpayoutcustodyfees.length > 0 && explorerHash.blocks[0].minerpayoutcustodyfees[i].age > 0) {
+				if (hasBeenSpent) {
+					appendStat(outputTable, 'Custody Fee Paid', readableCoins(explorerHash.blocks[0].minerpayoutcustodyfees[i].fee));
+					appendStat(outputTable, 'Spent Value', readableCoins(explorerHash.blocks[0].minerpayoutcustodyfees[i].value));
+				} else {
+					appendStat(outputTable, 'Age', readableDuration(explorerHash.blocks[0].minerpayoutcustodyfees[i].age));
+					appendStat(outputTable, 'Custody Fee To Be Paid', readableCoins(explorerHash.blocks[0].minerpayoutcustodyfees[i].fee));
+					appendStat(outputTable, 'Spendable Value', readableCoins(explorerHash.blocks[0].minerpayoutcustodyfees[i].value));
+				}
+			}
 			appendStat(table, 'Has Been Spent', hasBeenSpent);
 			infoBody.appendChild(table);
 		}
@@ -1847,7 +1994,7 @@ function appendCoinOutputTables(infoBody, hash, explorerHash) {
 						linkHash(doms[2], explorerHash.transactions[i].id);
 						doms = appendStat(table, 'Address', '');
 						linkHash(doms[2], explorerHash.transactions[i].rawtransaction.data.coinoutputs[j].unlockhash);
-						appendStat(table, 'Value', readableCoins(explorerHash.transactions[i].rawtransaction.data.coinoutputs[j].value));
+						appendStat(table, 'Creation Value', readableCoins(explorerHash.transactions[i].rawtransaction.data.coinoutputs[j].value));
 						appendStat(table, 'Has Been Spent', hasBeenSpent);
 						infoBody.appendChild(table);
 					}
@@ -1880,12 +2027,20 @@ function appendCoinOutputTables(infoBody, hash, explorerHash) {
 							case 4:
 								f = addV1T4Output;
 								break;
+							case 128:
+								f = addV1T128Output;
+								break;
 							default:
 								// ignore unknown
 								continue;
 						}
 						var outputTable = createStatsTable()
 						f(ctx, outputTable, explorerHash.transactions[i], j, 'coins', coinoutputs);
+						if (explorerHash.transactions[i].coinoutputcustodyfees && explorerHash.transactions[i].coinoutputcustodyfees.length > 0 && explorerHash.transactions[i].coinoutputcustodyfees[i].age > 0) {
+							appendStat(outputTable, 'Age', readableDuration(explorerHash.transactions[i].coinoutputcustodyfees[i].age));
+							appendStat(outputTable, 'Custody Fee To Be Paid', readableCoins(explorerHash.transactions[i].coinoutputcustodyfees[i].fee));
+							appendStat(outputTable, 'Spendable Value', readableCoins(explorerHash.transactions[i].coinoutputcustodyfees[i].value));
+						}
 						infoBody.appendChild(outputTable)
 						appendStat(table, 'Has Been Spent', hasBeenSpent);
 						infoBody.appendChild(table);

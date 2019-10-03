@@ -282,6 +282,7 @@ function appendBlockMinerPayouts(element, explorerBlock) {
 	appendStatTableTitle(element, 'Reward and Fee Payouts');
 	var txIndex = 0;
 	var i = 0;
+
 	for (; i < explorerBlock.rawblock.minerpayouts.length;) {
 		if (txIndex >= explorerBlock.transactions.length) {
 			// continue the rest using the old approach,
@@ -293,7 +294,12 @@ function appendBlockMinerPayouts(element, explorerBlock) {
 				linkHash(doms[2], explorerBlock.minerpayoutids[i]);
 				doms = appendStat(table, 'Payout Address', '');
 				linkHash(doms[2], explorerBlock.rawblock.minerpayouts[i].unlockhash);
-				appendStat(table, 'Value', readableCoins(explorerBlock.rawblock.minerpayouts[i].value));
+				appendStat(table, 'CreationValue', readableCoins(explorerBlock.rawblock.minerpayouts[i].value));
+				if (explorerBlock.minerpayoutcustodyfees && explorerBlock.minerpayoutcustodyfees.length > 0 && explorerBlock.minerpayoutcustodyfees[i].age > 0) {
+					appendStat(table, 'Age', readableDuration(explorerBlock.minerpayoutcustodyfees[i].age));
+					appendStat(table, 'Custody Fee To Be Paid', readableCoins(explorerBlock.minerpayoutcustodyfees[i].fee));
+					appendStat(table, 'Spendable Value', readableCoins(explorerBlock.minerpayoutcustodyfees[i].value));
+				}
 
 				element.appendChild(table);
 			}
@@ -307,7 +313,12 @@ function appendBlockMinerPayouts(element, explorerBlock) {
 			linkHash(doms[2], explorerBlock.minerpayoutids[i]);
 			doms = appendStat(table, 'Payout Address', '');
 			linkHash(doms[2], explorerBlock.rawblock.minerpayouts[i].unlockhash);
-			appendStat(table, 'Value', readableCoins(explorerBlock.rawblock.minerpayouts[i].value));
+			appendStat(table, 'Creation Value', readableCoins(explorerBlock.rawblock.minerpayouts[i].value));
+			if (explorerBlock.minerpayoutcustodyfees && explorerBlock.minerpayoutcustodyfees.length > 0 && explorerBlock.minerpayoutcustodyfees[i].age > 0) {
+				appendStat(table, 'Age', readableDuration(explorerBlock.minerpayoutcustodyfees[i].age));
+				appendStat(table, 'Custody Fee To Be Paid', readableCoins(explorerBlock.minerpayoutcustodyfees[i].fee));
+				appendStat(table, 'Spendable Value', readableCoins(explorerBlock.minerpayoutcustodyfees[i].value));
+			}
 			if (i == 0) {
 				appendStat(table, 'Source Description', 'Block Creator Reward (New Coins)');
 				txIndex++
@@ -336,7 +347,12 @@ function appendBlockMinerPayouts(element, explorerBlock) {
 			linkHash(doms[2], explorerBlock.minerpayoutids[i]);
 			doms = appendStat(table, 'Payout Address', '');
 			linkHash(doms[2], explorerBlock.rawblock.minerpayouts[i].unlockhash);
-			appendStat(table, 'Value', readableCoins(explorerBlock.rawblock.minerpayouts[i].value));
+			appendStat(table, 'Creation Value', readableCoins(explorerBlock.rawblock.minerpayouts[i].value));
+			if (explorerBlock.minerpayoutcustodyfees && explorerBlock.minerpayoutcustodyfees.length > 0 && explorerBlock.minerpayoutcustodyfees[i].age > 0) {
+				appendStat(table, 'Age', readableDuration(explorerBlock.minerpayoutcustodyfees[i].age));
+				appendStat(table, 'Custody Fee To Be Paid', readableCoins(explorerBlock.minerpayoutcustodyfees[i].fee));
+				appendStat(table, 'Spendable Value', readableCoins(explorerBlock.minerpayoutcustodyfees[i].value));
+			}
 			doms = appendStat(table, 'Source Transaction ID', '');
 			linkHash(doms[2], payouts[u].txid);
 			appendStat(table, 'Source Description', payouts[u].desc);

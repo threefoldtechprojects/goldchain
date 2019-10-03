@@ -1966,15 +1966,14 @@ function appendCoinOutputTables(infoBody, hash, explorerHash) {
 			doms = appendStat(table, 'Address', '');
 			linkHash(doms[2], explorerHash.blocks[0].rawblock.minerpayouts[i].unlockhash);
 			appendStat(table, 'Creation Value', readableCoins(explorerHash.blocks[0].rawblock.minerpayouts[i].value));
-			console.log(explorerHash.blocks[0].minerpayoutcustodyfees)
 			if (explorerHash.blocks[0].minerpayoutcustodyfees && explorerHash.blocks[0].minerpayoutcustodyfees.length > 0 && explorerHash.blocks[0].minerpayoutcustodyfees[i].age > 0) {
-				if (hasBeenSpent) {
-					appendStat(outputTable, 'Custody Fee Paid', readableCoins(explorerHash.blocks[0].minerpayoutcustodyfees[i].fee));
-					appendStat(outputTable, 'Spent Value', readableCoins(explorerHash.blocks[0].minerpayoutcustodyfees[i].value));
+				if (hasBeenSpent == 'Yes') {
+					appendStat(table, 'Custody Fee Paid', readableCoins(explorerHash.blocks[0].minerpayoutcustodyfees[i].fee));
+					appendStat(table, 'Spent Value', readableCoins(explorerHash.blocks[0].minerpayoutcustodyfees[i].value));
 				} else {
-					appendStat(outputTable, 'Age', readableDuration(explorerHash.blocks[0].minerpayoutcustodyfees[i].age));
-					appendStat(outputTable, 'Custody Fee To Be Paid', readableCoins(explorerHash.blocks[0].minerpayoutcustodyfees[i].fee));
-					appendStat(outputTable, 'Spendable Value', readableCoins(explorerHash.blocks[0].minerpayoutcustodyfees[i].value));
+					appendStat(table, 'Age', readableDuration(explorerHash.blocks[0].minerpayoutcustodyfees[i].age));
+					appendStat(table, 'Custody Fee To Be Paid', readableCoins(explorerHash.blocks[0].minerpayoutcustodyfees[i].fee));
+					appendStat(table, 'Spendable Value', readableCoins(explorerHash.blocks[0].minerpayoutcustodyfees[i].value));
 				}
 			}
 			appendStat(table, 'Has Been Spent', hasBeenSpent);

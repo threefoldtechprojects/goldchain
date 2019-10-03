@@ -143,6 +143,35 @@ func (p *Plugin) ApplyBlock(block modules.ConsensusBlock, bucket *persist.LazyBo
 	return nil
 }
 
+// ApplyBlockHeader applies data from a block header to the custodyfee bucket.
+func (p *Plugin) ApplyBlockHeader(header modules.ConsensusBlockHeader, bucket *persist.LazyBoltBucket) error {
+	if bucket == nil {
+		return errors.New("custodyfee bucket does not exist")
+	}
+	if len(header.MinerPayouts) == 0 {
+		return nil // nothing to do
+	}
+	coBucket, err := bucket.Bucket(bucketCoinOutputs)
+	if err != nil {
+		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
+	}
+	btValue, err := rivbin.Marshal(header.Timestamp)
+	if err != nil {
+		return fmt.Errorf("failed to rivbin marshal block time: %v", err)
+	}
+	for _, mpid := range header.MinerPayoutIDs {
+		bMPID, err := rivbin.Marshal(mpid)
+		if err != nil {
+			return fmt.Errorf("failed to rivbin marshal (miner payout ID as) coin output ID: %v", err)
+		}
+		err = coBucket.Put(bMPID, btValue)
+		if err != nil {
+			return fmt.Errorf("failed to link (miner payout ID as) coin output's ID to its block time: %v", err)
+		}
+	}
+	return nil
+}
+
 // ApplyTransaction applies a custodyfee transactions to the custodyfee bucket.
 func (p *Plugin) ApplyTransaction(txn modules.ConsensusTransaction, bucket *persist.LazyBoltBucket) error {
 	if bucket == nil {
@@ -210,6 +239,31 @@ func (p *Plugin) RevertBlock(block modules.ConsensusBlock, bucket *persist.LazyB
 		err = p.revertTransaction(cTxn, coBucket)
 		if err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// RevertBlockHeader reverts data from a block header from the custodyfee bucket.
+func (p *Plugin) RevertBlockHeader(header modules.ConsensusBlockHeader, bucket *persist.LazyBoltBucket) error {
+	if bucket == nil {
+		return errors.New("custodyfee bucket does not exist")
+	}
+	if len(header.MinerPayouts) == 0 {
+		return nil // nothing to do
+	}
+	coBucket, err := bucket.Bucket(bucketCoinOutputs)
+	if err != nil {
+		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
+	}
+	for _, mpid := range header.MinerPayoutIDs {
+		bMPID, err := rivbin.Marshal(mpid)
+		if err != nil {
+			return fmt.Errorf("failed to rivbin marshal (miner payout ID as) coin output ID: %v", err)
+		}
+		err = coBucket.Delete(bMPID)
+		if err != nil {
+			return fmt.Errorf("failed to unlink (miner payout ID as) coin output's ID from its block time: %v", err)
 		}
 	}
 	return nil

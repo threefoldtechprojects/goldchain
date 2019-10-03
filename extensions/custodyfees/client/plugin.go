@@ -3,6 +3,7 @@ package client
 import (
 	"fmt"
 
+	"github.com/nbh-digital/goldchain/extensions/custodyfees"
 	"github.com/nbh-digital/goldchain/extensions/custodyfees/api"
 	client "github.com/threefoldtech/rivine/pkg/client"
 	types "github.com/threefoldtech/rivine/types"
@@ -39,31 +40,104 @@ func NewPluginExplorerClient(cli *client.BaseClient) *PluginClient {
 	}
 }
 
-func (cli *PluginClient) GetCoinOutputAge(id types.CoinOutputID) (types.Timestamp, error) {
-	return cli.GetCoinOutputAgeOn(id, 0)
-}
-func (cli *PluginClient) GetCoinOutputAgeOn(id types.CoinOutputID, blockTime types.Timestamp) (types.Timestamp, error) {
-	var result api.CoinOutputGetAge
-	err := cli.client.HTTP().GetWithResponse(cli.rootEndpoint+"/custodyfees/coinoutput/age/"+id.String(), &result)
+// GetCoinOutputInfo returns the custody fee related coin output information for a given coin output ID,
+// returns an error only if the coin out never existed (spent or not).
+func (cli *PluginClient) GetCoinOutputInfo(id types.CoinOutputID) (custodyfees.CoinOutputInfo, error) {
+	var result api.CoinOutputInfoGet
+	err := cli.client.HTTP().GetWithResponse(
+		fmt.Sprintf("%s/custodyfees/coinoutput/%s?compute=true", cli.rootEndpoint, id.String()),
+		&result)
 	if err != nil {
-		return 0, fmt.Errorf(
-			"failed to get age for coin output %s from daemon: %v", id.String(), err)
+		return custodyfees.CoinOutputInfo{}, fmt.Errorf(
+			"failed to get custody fee info for coin output %s from daemon: %v", id.String(), err)
 	}
-	return result.Age, nil
+	info := custodyfees.CoinOutputInfo{
+		CreationTime:       result.CreationTime,
+		CreationValue:      result.CreationValue,
+		IsCustodyFee:       result.IsCustodyFee,
+		Spent:              result.Spent,
+		FeeComputationTime: result.FeeComputationTime,
+	}
+	if result.CustodyFee != nil {
+		info.CustodyFee = *result.CustodyFee
+	}
+	if result.SpendableValue != nil {
+		info.SpendableValue = *result.SpendableValue
+	}
+	return info, nil
 }
 
-func (cli *PluginClient) GetCoinOutputValueCustodyFeePair(id types.CoinOutputID) (types.Currency, types.Currency, error) {
-	return cli.GetCoinOutputValueCustodyFeePairOn(id, 0)
-}
-func (cli *PluginClient) GetCoinOutputValueCustodyFeePairOn(id types.CoinOutputID, blockTime types.Timestamp) (value, fee types.Currency, err error) {
-	var result api.CoinOutputGetCustodyFee
-	err = cli.client.HTTP().GetWithResponse(cli.rootEndpoint+"/custodyfees/coinoutput/fee/"+id.String(), &result)
+// GetCoinOutputInfoOn returns the custody fee related coin output information for a given coin output ID,
+// returns an error only if the coin out never existed (spent or not).
+func (cli *PluginClient) GetCoinOutputInfoOn(id types.CoinOutputID, chainTime types.Timestamp) (custodyfees.CoinOutputInfo, error) {
+	var result api.CoinOutputInfoGet
+	err := cli.client.HTTP().GetWithResponse(
+		fmt.Sprintf("%s/custodyfees/coinoutput/%s?compute=true&time=%d", cli.rootEndpoint, id.String(), chainTime),
+		&result)
 	if err != nil {
-		err = fmt.Errorf(
-			"failed to get age for coin output %s from daemon: %v", id.String(), err)
-		return
+		return custodyfees.CoinOutputInfo{}, fmt.Errorf(
+			"failed to get custody fee info for coin output %s from daemon: %v", id.String(), err)
 	}
-	value = result.Value
-	fee = result.Fee
-	return
+	info := custodyfees.CoinOutputInfo{
+		CreationTime:       result.CreationTime,
+		CreationValue:      result.CreationValue,
+		IsCustodyFee:       result.IsCustodyFee,
+		Spent:              result.Spent,
+		FeeComputationTime: result.FeeComputationTime,
+	}
+	if result.CustodyFee != nil {
+		info.CustodyFee = *result.CustodyFee
+	}
+	if result.SpendableValue != nil {
+		info.SpendableValue = *result.SpendableValue
+	}
+	return info, nil
+}
+
+// GetCoinOutputInfoAt returns the custody fee related coin output information for a given coin output ID,
+// returns an error only if the coin out never existed (spent or not).
+func (cli *PluginClient) GetCoinOutputInfoAt(id types.CoinOutputID, chainHeight types.BlockHeight) (custodyfees.CoinOutputInfo, error) {
+	var result api.CoinOutputInfoGet
+	err := cli.client.HTTP().GetWithResponse(
+		fmt.Sprintf("%s/custodyfees/coinoutput/%s?compute=true&height=%d", cli.rootEndpoint, id.String(), chainHeight),
+		&result)
+	if err != nil {
+		return custodyfees.CoinOutputInfo{}, fmt.Errorf(
+			"failed to get custody fee info for coin output %s from daemon: %v", id.String(), err)
+	}
+	info := custodyfees.CoinOutputInfo{
+		CreationTime:       result.CreationTime,
+		CreationValue:      result.CreationValue,
+		IsCustodyFee:       result.IsCustodyFee,
+		Spent:              result.Spent,
+		FeeComputationTime: result.FeeComputationTime,
+	}
+	if result.CustodyFee != nil {
+		info.CustodyFee = *result.CustodyFee
+	}
+	if result.SpendableValue != nil {
+		info.SpendableValue = *result.SpendableValue
+	}
+	return info, nil
+}
+
+// GetCoinOutputInfoPreComputation returns the custody fee related coin output information for a given coin output ID,
+// returns an error only if the coin out never existed (spent or not).
+// Similar to `GetCoinOutputInfo` with the difference that the fee and spendable value aren't calculated yet.
+func (cli *PluginClient) GetCoinOutputInfoPreComputation(id types.CoinOutputID) (custodyfees.CoinOutputInfoPreComputation, error) {
+	var result api.CoinOutputInfoGet
+	err := cli.client.HTTP().GetWithResponse(
+		fmt.Sprintf("%s/custodyfees/coinoutput/%s?compute=false", cli.rootEndpoint, id.String()),
+		&result)
+	if err != nil {
+		return custodyfees.CoinOutputInfoPreComputation{}, fmt.Errorf(
+			"failed to get pre-compute custody fee info for coin output %s from daemon: %v", id.String(), err)
+	}
+	return custodyfees.CoinOutputInfoPreComputation{
+		CreationTime:       result.CreationTime,
+		CreationValue:      result.CreationValue,
+		IsCustodyFee:       result.IsCustodyFee,
+		Spent:              result.Spent,
+		FeeComputationTime: result.FeeComputationTime,
+	}, nil
 }

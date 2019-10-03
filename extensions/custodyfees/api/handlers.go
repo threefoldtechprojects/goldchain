@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/nbh-digital/goldchain/extensions/custodyfees"
@@ -11,112 +12,104 @@ import (
 	"github.com/threefoldtech/rivine/types"
 )
 
-// CoinOutputGetAge contains the requested age of a coin output,
-// for a given coin output ID and optional block time.
-type CoinOutputGetAge struct {
-	Age types.Timestamp `json:"age"`
-}
+type (
+	// CoinOutputInfoGet is all coin output info that can be requested from the custody fees API about
+	// a known coin output.
+	CoinOutputInfoGet struct {
+		CreationTime       types.Timestamp `json:"creationtime"`
+		CreationValue      types.Currency  `json:"creationvalue"`
+		IsCustodyFee       bool            `json:"iscustodyfee"`
+		Spent              bool            `json:"spent"`
+		FeeComputationTime types.Timestamp `json:"feecomputationtime"`
+		CustodyFee         *types.Currency `json:"custodyfee,omitempty"`
+		SpendableValue     *types.Currency `json:"spendablevalue,omitempty"`
+	}
+)
 
-// CoinOutputGetCustodyFee contains the requested fee and age of a coin output,
-// for a given coin output ID and optional block time.
-type CoinOutputGetCustodyFee struct {
-	Value types.Currency  `json:"value"` // amount still spendable
-	Fee   types.Currency  `json:"fee"`
-	Age   types.Timestamp `json:"age"`
-}
-
-// NewCoinOutputGetAgeHandler creates a handler to handle the API calls to /*/custodyfees/coinoutput/age/:id?time=0.
-func NewCoinOutputGetAgeHandler(cs modules.ConsensusSet, plugin *custodyfees.Plugin) httprouter.Handle {
+// NewCoinOutputInfoGetHandler creates a handler to handle the API calls to /*/custodyfees/coinoutput/:id?time=0&height=0&compute=true.
+func NewCoinOutputInfoGetHandler(cs modules.ConsensusSet, plugin *custodyfees.Plugin) httprouter.Handle {
 	return func(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-		coid, blockTime, blockTimeIsUserDefined, ok := getCoinOutputIDAndTimeFromParams(cs, ps, w)
-		if !ok {
+		// load coin output ID
+		var coid types.CoinOutputID
+		idStr := ps.ByName("id")
+		err := coid.LoadString(idStr)
+		if err != nil {
+			rapi.WriteError(w, rapi.Error{Message: "failed to parse id param: " + err.Error()}, http.StatusBadRequest)
 			return
 		}
-		age, ok := getAgeOfCoinOutput(plugin, coid, blockTime, blockTimeIsUserDefined, w)
-		if !ok {
+
+		q := req.URL.Query()
+
+		computeFee := true
+		computeFeeStr := q.Get("compute")
+		if computeFeeStr != "" && (computeFeeStr == "0" || strings.ToLower(computeFeeStr) == "false") {
+			computeFee = false
+		}
+		if !computeFee {
+			info, err := plugin.GetCoinOutputInfoPreComputation(coid)
+			if err != nil {
+				rapi.WriteError(w, rapi.Error{Message: err.Error()}, http.StatusInternalServerError)
+				return
+			}
+			rapi.WriteJSON(w, CoinOutputInfoGet{
+				CreationTime:       info.CreationTime,
+				CreationValue:      info.CreationValue,
+				IsCustodyFee:       info.IsCustodyFee,
+				Spent:              info.Spent,
+				FeeComputationTime: info.FeeComputationTime,
+				CustodyFee:         nil,
+				SpendableValue:     nil,
+			})
 			return
 		}
-		rapi.WriteJSON(w, CoinOutputGetAge{
-			Age: age,
+
+		// load optional time or get it from the consensus set for latest block
+		var blockTime types.Timestamp
+		blockTimeStr := q.Get("time")
+		blockTimeIsUserDefined := blockTimeStr != ""
+		if !blockTimeIsUserDefined {
+			heightStr := q.Get("height")
+			var height types.BlockHeight
+			if heightStr != "" {
+				n, err := fmt.Sscan(heightStr, &height)
+				if err != nil {
+					rapi.WriteError(w, rapi.Error{Message: "failed to parse time query param: " + err.Error()}, http.StatusBadRequest)
+					return
+				}
+				if n != 1 {
+					rapi.WriteError(w, rapi.Error{Message: "failed to parse time query param '" + heightStr + "'"}, http.StatusBadRequest)
+					return
+				}
+			} else {
+				height = cs.Height()
+			}
+			block, ok := cs.BlockAtHeight(height)
+			if !ok {
+				rapi.WriteError(w, rapi.Error{Message: fmt.Sprintf("failed to find block at height %d", height)}, http.StatusInternalServerError)
+				return
+			}
+			blockTime = block.Timestamp
+		} else {
+			blockTime.LoadString(blockTimeStr)
+			if err != nil {
+				rapi.WriteError(w, rapi.Error{Message: "failed to parse time query param: " + err.Error()}, http.StatusBadRequest)
+				return
+			}
+		}
+		// get creation timestamp for coin output
+		info, err := plugin.GetCoinOutputInfo(coid, blockTime)
+		if err != nil {
+			rapi.WriteError(w, rapi.Error{Message: err.Error()}, http.StatusInternalServerError)
+			return
+		}
+		rapi.WriteJSON(w, CoinOutputInfoGet{
+			CreationTime:       info.CreationTime,
+			CreationValue:      info.CreationValue,
+			IsCustodyFee:       info.IsCustodyFee,
+			Spent:              info.Spent,
+			FeeComputationTime: info.FeeComputationTime,
+			CustodyFee:         &info.CustodyFee,
+			SpendableValue:     &info.SpendableValue,
 		})
 	}
-}
-
-// NewCoinOutputGetCustodyFeeHandler creates a handler to handle the API calls to /*/custodyfees/coinoutput/fee/:id?time=0.
-func NewCoinOutputGetCustodyFeeHandler(cs modules.ConsensusSet, plugin *custodyfees.Plugin) httprouter.Handle {
-	return func(w http.ResponseWriter, req *http.Request, ps httprouter.Params) {
-		coid, blockTime, blockTimeIsUserDefined, ok := getCoinOutputIDAndTimeFromParams(cs, ps, w)
-		if !ok {
-			return
-		}
-		age, ok := getAgeOfCoinOutput(plugin, coid, blockTime, blockTimeIsUserDefined, w)
-		if !ok {
-			return
-		}
-		co, err := cs.GetCoinOutput(coid)
-		if err != nil {
-			rapi.WriteError(w, rapi.Error{Message: "failed to look up coin output in consensus set: " + err.Error()}, http.StatusInternalServerError)
-			return
-		}
-		_, fee := custodyfees.AmountCustodyFeePairAfterXSeconds(co.Value, age)
-		rapi.WriteJSON(w, CoinOutputGetCustodyFee{
-			Value: co.Value.Sub(fee),
-			Fee:   fee,
-			Age:   age,
-		})
-	}
-}
-
-func getCoinOutputIDAndTimeFromParams(cs modules.ConsensusSet, ps httprouter.Params, w http.ResponseWriter) (coid types.CoinOutputID, blockTime types.Timestamp, blockTimeIsUserDefined bool, ok bool) {
-	// load coin output ID
-	idStr := ps.ByName("id")
-	err := coid.LoadString(idStr)
-	if err != nil {
-		rapi.WriteError(w, rapi.Error{Message: "failed to parse id param: " + err.Error()}, http.StatusBadRequest)
-		return
-	}
-
-	// load optional time or get it from the consensus set for latest block
-	blockTimeStr := ps.ByName("time")
-	blockTimeIsUserDefined = blockTimeStr != ""
-	if !blockTimeIsUserDefined {
-		height := cs.Height()
-		var block types.Block
-		block, ok = cs.BlockAtHeight(height)
-		if !ok {
-			rapi.WriteError(w, rapi.Error{Message: fmt.Sprintf("failed to find block at current height %d", height)}, http.StatusInternalServerError)
-			return
-		}
-		blockTime = block.Timestamp
-	} else {
-		blockTime.LoadString(blockTimeStr)
-		if err != nil {
-			rapi.WriteError(w, rapi.Error{Message: "failed to parse time param: " + err.Error()}, http.StatusBadRequest)
-			return
-		}
-	}
-	ok = true
-	return
-}
-
-func getAgeOfCoinOutput(plugin *custodyfees.Plugin, id types.CoinOutputID, blockTime types.Timestamp, blockTimeIsUsedDefined bool, w http.ResponseWriter) (types.Timestamp, bool) {
-	// get creation timestamp for coin output
-	ts, err := plugin.GetCoinOutputCreationTime(id)
-	if err != nil {
-		rapi.WriteError(w, rapi.Error{Message: err.Error()}, http.StatusInternalServerError)
-		return 0, false
-	}
-
-	// calculate age of coin output and return it
-	if ts > blockTime {
-		status := http.StatusBadRequest
-		if !blockTimeIsUsedDefined {
-			status = http.StatusInternalServerError
-		}
-		rapi.WriteError(w, rapi.Error{
-			Message: fmt.Sprintf("invalid coin output creation time is in future compare to used block timestamp: %d > %d", ts, blockTime)},
-			status)
-		return 0, false
-	}
-	return blockTime - ts, true
 }

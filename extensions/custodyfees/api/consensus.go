@@ -8,6 +8,5 @@ import (
 
 // RegisterConsensusCustodyFeesHTTPHandlers registers the default consensus HTTP handlers specific to the custodyfees package.
 func RegisterConsensusCustodyFeesHTTPHandlers(router rapi.Router, cs modules.ConsensusSet, plugin *custodyfees.Plugin) {
-	router.GET("/consensus/custodyfees/coinoutput/age/:id", NewCoinOutputGetAgeHandler(cs, plugin))
-	router.GET("/consensus/custodyfees/coinoutput/fee/:id", NewCoinOutputGetCustodyFeeHandler(cs, plugin))
+	router.GET("/consensus/custodyfees/coinoutput/:id", NewCoinOutputInfoGetHandler(cs, plugin))
 }

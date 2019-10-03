@@ -9,6 +9,7 @@ import (
 
 	"github.com/nbh-digital/goldchain/pkg/config"
 
+	cfcli "github.com/nbh-digital/goldchain/extensions/custodyfees/client"
 	"github.com/nbh-digital/goldchain/pkg/types"
 	authcointxcli "github.com/threefoldtech/rivine/extensions/authcointx/client"
 	mintingcli "github.com/threefoldtech/rivine/extensions/minting/client"
@@ -27,7 +28,9 @@ func main() {
 
 	// register goldchain-specific explorer commands
 	mintingcli.CreateExploreCmd(cliClient.CommandLineClient)
+	cfcli.CreateExplorerSubCmds(cliClient.CommandLineClient)
 	mintingcli.CreateConsensusCmd(cliClient.CommandLineClient)
+	cfcli.CreateConsensusSubCmds(cliClient.CommandLineClient)
 
 	// add cli wallet extension commands
 	mintingcli.CreateWalletCmds(

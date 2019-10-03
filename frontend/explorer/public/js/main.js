@@ -33,6 +33,9 @@ function readableDifficulty(hashes) {
 
 // readableDuration takes a duration in seconds and returns it in a more human readable format
 function readableDuration(seconds) {
+	if (!seconds) {
+		return '0 seconds';
+	}
 	var levels = [
 		[Math.floor(seconds / 31536000), 'years'],
 		[Math.floor((seconds % 31536000) / 86400), 'days'],
@@ -294,12 +297,7 @@ function appendBlockMinerPayouts(element, explorerBlock) {
 				linkHash(doms[2], explorerBlock.minerpayoutids[i]);
 				doms = appendStat(table, 'Payout Address', '');
 				linkHash(doms[2], explorerBlock.rawblock.minerpayouts[i].unlockhash);
-				appendStat(table, 'CreationValue', readableCoins(explorerBlock.rawblock.minerpayouts[i].value));
-				if (explorerBlock.minerpayoutcustodyfees && explorerBlock.minerpayoutcustodyfees.length > 0 && explorerBlock.minerpayoutcustodyfees[i].age > 0) {
-					appendStat(table, 'Age', readableDuration(explorerBlock.minerpayoutcustodyfees[i].age));
-					appendStat(table, 'Custody Fee To Be Paid', readableCoins(explorerBlock.minerpayoutcustodyfees[i].fee));
-					appendStat(table, 'Spendable Value', readableCoins(explorerBlock.minerpayoutcustodyfees[i].value));
-				}
+				appendCoinOutputUsingCustodyInfo(table, explorerBlock.minerpayoutcustodyfees[i]);
 
 				element.appendChild(table);
 			}
@@ -313,12 +311,7 @@ function appendBlockMinerPayouts(element, explorerBlock) {
 			linkHash(doms[2], explorerBlock.minerpayoutids[i]);
 			doms = appendStat(table, 'Payout Address', '');
 			linkHash(doms[2], explorerBlock.rawblock.minerpayouts[i].unlockhash);
-			appendStat(table, 'Creation Value', readableCoins(explorerBlock.rawblock.minerpayouts[i].value));
-			if (explorerBlock.minerpayoutcustodyfees && explorerBlock.minerpayoutcustodyfees.length > 0 && explorerBlock.minerpayoutcustodyfees[i].age > 0) {
-				appendStat(table, 'Age', readableDuration(explorerBlock.minerpayoutcustodyfees[i].age));
-				appendStat(table, 'Custody Fee To Be Paid', readableCoins(explorerBlock.minerpayoutcustodyfees[i].fee));
-				appendStat(table, 'Spendable Value', readableCoins(explorerBlock.minerpayoutcustodyfees[i].value));
-			}
+			appendCoinOutputUsingCustodyInfo(table, explorerBlock.minerpayoutcustodyfees[i]);
 			if (i == 0) {
 				appendStat(table, 'Source Description', 'Block Creator Reward (New Coins)');
 				txIndex++
@@ -347,12 +340,7 @@ function appendBlockMinerPayouts(element, explorerBlock) {
 			linkHash(doms[2], explorerBlock.minerpayoutids[i]);
 			doms = appendStat(table, 'Payout Address', '');
 			linkHash(doms[2], explorerBlock.rawblock.minerpayouts[i].unlockhash);
-			appendStat(table, 'Creation Value', readableCoins(explorerBlock.rawblock.minerpayouts[i].value));
-			if (explorerBlock.minerpayoutcustodyfees && explorerBlock.minerpayoutcustodyfees.length > 0 && explorerBlock.minerpayoutcustodyfees[i].age > 0) {
-				appendStat(table, 'Age', readableDuration(explorerBlock.minerpayoutcustodyfees[i].age));
-				appendStat(table, 'Custody Fee To Be Paid', readableCoins(explorerBlock.minerpayoutcustodyfees[i].fee));
-				appendStat(table, 'Spendable Value', readableCoins(explorerBlock.minerpayoutcustodyfees[i].value));
-			}
+			appendCoinOutputUsingCustodyInfo(table, explorerBlock.minerpayoutcustodyfees[i]);
 			doms = appendStat(table, 'Source Transaction ID', '');
 			linkHash(doms[2], payouts[u].txid);
 			appendStat(table, 'Source Description', payouts[u].desc);
@@ -511,6 +499,29 @@ function getBlockchainConstants() {
 	return JSON.parse(request.responseText);
 }
 
+function appendCoinOutputUsingCustodyInfo(table, info) {
+	appendStat(table, 'Creation Time', formatUnixTime(info.creationtime));
+	appendStat(table, 'Creation Value', readableCoins(info.creationvalue));
+	if (info.iscustodyfee) {
+		return;
+	}
+	var spentValue, feeLabel, ageLabel, spendableValueLabel;
+	if (info.spent) {
+		spentValue = 'Yes';
+		feeLabel = 'Custody Fee Paid';
+		ageLabel = 'Age When Spent';
+		spendableValueLabel = 'Spent Value';
+	} else {
+		spentValue = 'No';
+		feeLabel = 'Custody Fee To Pay';
+		ageLabel = 'Current Age';
+		spendableValueLabel = 'Spendable Value';
+	}
+	appendStat(table, 'Has Been Spent', spentValue);
+	appendStat(table, ageLabel, readableDuration(info.feecomputationtime-info.creationtime));
+	appendStat(table, feeLabel, readableCoins(info.custodyfee));
+	appendStat(table, spendableValueLabel, readableCoins(info.spendablevalue));
+}
 
 //Changes the document title according to the network the page is running on
 function buildPageTitle() {

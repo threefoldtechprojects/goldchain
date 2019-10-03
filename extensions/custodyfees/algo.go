@@ -1,9 +1,16 @@
 package custodyfees
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/threefoldtech/rivine/types"
+)
+
+const (
+	// MaxCustodyFeeComputeDuration is the maximum duration we allow to compute,
+	// before we panic, as that is for now assumed to be a bug.
+	MaxCustodyFeeComputeDuration = 31540000000 // ~ 1000 years
 )
 
 // AmountCustodyFeePairAfterXSeconds computes the value left over to spend after the, also returned,
@@ -17,6 +24,10 @@ func AmountCustodyFeePairAfterXSeconds(c types.Currency, seconds types.Timestamp
 // SpendableAmountAfterXSeconds computes the spendable amount of value left over,
 // after removing the custody fee to be paid for the given x seconds.
 func SpendableAmountAfterXSeconds(c types.Currency, seconds types.Timestamp) types.Currency {
+	if seconds > MaxCustodyFeeComputeDuration { // safety check
+		panic(fmt.Sprintf("Max Limit reached: cannot compute the spendable value of %s for invalid duration %d", c.String(), uint64(seconds)))
+	}
+
 	// compute our duration tripplet, to keep the calculations small enough
 	rd, rsh, rs := getDurationAsTripplet(seconds)
 

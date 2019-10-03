@@ -21,6 +21,7 @@ func TestAmountCustodyFeePairAfterXSeconds(t *testing.T) {
 		{gft("1"), 1, gft("1")},
 		{gft("1"), 50, gft("0.999999986")},
 		{gft("0.000000001"), 999999, gft("0.000000001")},
+		{gft("10"), 113, gft("9.999999673")},
 		{gft("100"), 24 * 60 * 60, gft("99.9975")},
 		{gft("40000"), 24 * 60 * 60, gft("39999")},
 		{gft("500000000000"), 24 * 60 * 60, gft("499987500000")},
@@ -29,17 +30,20 @@ func TestAmountCustodyFeePairAfterXSeconds(t *testing.T) {
 		{gft("35000.853"), 5404, gft("35000.798270685")},
 		{gft("35000.853"), 13679330, gft("34862.586836388")},
 		{gft("35000.853"), 157766400, gft("33438.96584286")},
+		{gft("35000.853"), MaxCustodyFeeComputeDuration, gft("3.807056146")},
 	}
-	var value, fee types.Currency
-	for testIndex, testCase := range testCases {
-		value, fee = AmountCustodyFeePairAfterXSeconds(testCase.InputValue, testCase.Duration)
-		if value.Cmp(testCase.SpendableValue) != 0 {
-			t.Errorf("unexpected result in test case #%d: unexpected spendeable value: %s != %s", testIndex+1, gfts(value), gfts(testCase.SpendableValue))
-			continue
-		}
-		expectedFee := testCase.InputValue.Sub(testCase.SpendableValue)
-		if fee.Cmp(expectedFee) != 0 {
-			t.Errorf("unexpected result in test case #%d: unexpected custody fee: %s != %s", testIndex+1, gfts(fee), gfts(expectedFee))
+	for i := 0; i < 5; i++ {
+		var value, fee types.Currency
+		for testIndex, testCase := range testCases {
+			value, fee = AmountCustodyFeePairAfterXSeconds(testCase.InputValue, testCase.Duration)
+			if value.Cmp(testCase.SpendableValue) != 0 {
+				t.Errorf("run #%d: unexpected result in test case #%d: unexpected spendeable value: %s != %s", i+1, testIndex+1, gfts(value), gfts(testCase.SpendableValue))
+				continue
+			}
+			expectedFee := testCase.InputValue.Sub(testCase.SpendableValue)
+			if fee.Cmp(expectedFee) != 0 {
+				t.Errorf("run #%d: unexpected result in test case #%d: unexpected custody fee: %s != %s", i+1, testIndex+1, gfts(fee), gfts(expectedFee))
+			}
 		}
 	}
 }

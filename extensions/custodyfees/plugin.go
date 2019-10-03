@@ -1,7 +1,6 @@
 package custodyfees
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -22,6 +21,10 @@ const (
 
 var (
 	bucketCoinOutputs = []byte("coinoutputs")
+
+	allBuckets = [][]byte{
+		bucketCoinOutputs,
+	}
 )
 
 type (
@@ -37,13 +40,35 @@ type (
 	}
 )
 
-// TODO:
-// - ensure plugin is aware of minerfee payouts at all times... (Rivine change that requires update in extensions as well as tfchain!!!)
-//		- this can be done by introducing Apply/Revert BlockHeader...
-//			(this is required as actual applied txs are done via ApplyTransaction, not via ApplyBlock, at least in the regular path...)
-// - store more info: spentTime (== computationRegistration, if 0 -> unspent), value
-// 		- also return creation time
-// 		- improve explorer backend based on this change
+type (
+	coinOutputDBInfo struct {
+		CreationTime       types.Timestamp
+		CreationValue      types.Currency
+		FeeComputationTime types.Timestamp
+		IsCustodyFee       bool
+	}
+
+	// CoinOutputInfo is all coin output info that can be requested from the plugin.
+	CoinOutputInfo struct {
+		CreationTime       types.Timestamp
+		CreationValue      types.Currency
+		IsCustodyFee       bool
+		Spent              bool
+		FeeComputationTime types.Timestamp
+		CustodyFee         types.Currency
+		SpendableValue     types.Currency
+	}
+
+	// CoinOutputInfoPreComputation is all coin output info that can be requested from the plugin,
+	// minus the custody fee computation.
+	CoinOutputInfoPreComputation struct {
+		CreationTime       types.Timestamp
+		CreationValue      types.Currency
+		IsCustodyFee       bool
+		Spent              bool
+		FeeComputationTime types.Timestamp
+	}
+)
 
 // NewPlugin creates a new CustodyFee Plugin,
 // also registering the condition type
@@ -57,25 +82,66 @@ func NewPlugin(maxAllowedComputationTimeAdvance types.Timestamp) *Plugin {
 	}
 }
 
-// GetCoinOutputCreationTime returns the timestamp of creation of a coin output
-func (p *Plugin) GetCoinOutputCreationTime(id types.CoinOutputID) (types.Timestamp, error) {
-	var ts types.Timestamp
-	err := p.storage.View(func(bucket *bolt.Bucket) error {
-		coBucket := bucket.Bucket(bucketCoinOutputs)
+// GetCoinOutputInfo returns the custody fee related coin output information for a given coin output ID,
+// returns an error only if the coin out never existed (spent or not).
+func (p *Plugin) GetCoinOutputInfo(id types.CoinOutputID, chainTime types.Timestamp) (CoinOutputInfo, error) {
+	var preComputationInfo CoinOutputInfoPreComputation
+	err := p.storage.View(func(rootBucket *bolt.Bucket) error {
+		coBucket := rootBucket.Bucket(bucketCoinOutputs)
 		if coBucket == nil {
 			return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs")
 		}
 		var err error
-		ts, err = getCoinOutputTime(coBucket, id)
-		if err != nil {
-			return fmt.Errorf("failed to look up creation timing of coin output %s: %v", id.String(), err)
-		}
-		return nil
+		preComputationInfo, err = getCoinOutputInfoPreComputation(coBucket, id)
+		return err
 	})
 	if err != nil {
-		return 0, err
+		return CoinOutputInfo{}, err
 	}
-	return ts, nil
+	var info CoinOutputInfo
+	info.CreationTime = preComputationInfo.CreationTime
+	info.CreationValue = preComputationInfo.CreationValue
+	info.IsCustodyFee = preComputationInfo.IsCustodyFee
+	if info.IsCustodyFee {
+		return info, err // no fee is required, and nothing of it is spendable
+	}
+	if preComputationInfo.FeeComputationTime == 0 {
+		if info.CreationTime > chainTime {
+			return info, fmt.Errorf(
+				"unspent coin output %s is created in the future (%d) compared to given chain time %d",
+				id.String(), info.CreationTime, chainTime)
+		}
+		info.FeeComputationTime = chainTime
+	} else {
+		info.Spent = true
+		info.FeeComputationTime = preComputationInfo.FeeComputationTime
+	}
+	if info.FeeComputationTime != info.CreationTime {
+		info.SpendableValue, info.CustodyFee = AmountCustodyFeePairAfterXSeconds(info.CreationValue, info.FeeComputationTime-info.CreationTime)
+	} else {
+		info.SpendableValue = info.CreationValue
+	}
+	return info, nil
+}
+
+// GetCoinOutputInfoPreComputation returns the custody fee related coin output information for a given coin output ID,
+// returns an error only if the coin out never existed (spent or not).
+// Similar to `GetCoinOutputInfo` with the difference that the fee and spendable value aren't calculated yet.
+func (p *Plugin) GetCoinOutputInfoPreComputation(id types.CoinOutputID) (CoinOutputInfoPreComputation, error) {
+	var info CoinOutputInfoPreComputation
+	err := p.storage.View(func(rootBucket *bolt.Bucket) error {
+		coBucket := rootBucket.Bucket(bucketCoinOutputs)
+		if coBucket == nil {
+			return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs")
+		}
+		var err error
+		info, err = getCoinOutputInfoPreComputation(coBucket, id)
+		return err
+	})
+	if err != nil {
+		return CoinOutputInfoPreComputation{}, err
+	}
+	return info, nil
 }
 
 // InitPlugin initializes the Bucket for the first time
@@ -83,12 +149,14 @@ func (p *Plugin) InitPlugin(metadata *persist.Metadata, bucket *bolt.Bucket, sto
 	p.storage = storage
 	p.unregisterCallback = unregisterCallback
 	if metadata == nil {
-		coinOutputsBucket := bucket.Bucket([]byte(bucketCoinOutputs))
-		if coinOutputsBucket == nil {
-			var err error
-			_, err = bucket.CreateBucket([]byte(bucketCoinOutputs))
-			if err != nil {
-				return persist.Metadata{}, fmt.Errorf("failed to create coin outputs bucket: %v", err)
+		for _, bucketName := range allBuckets {
+			subBucket := bucket.Bucket([]byte(bucketName))
+			if subBucket == nil {
+				var err error
+				_, err = bucket.CreateBucket([]byte(bucketName))
+				if err != nil {
+					return persist.Metadata{}, fmt.Errorf("failed to create %s bucket for custody fees plugin: %v", string(bucketName), err)
+				}
 			}
 		}
 
@@ -111,17 +179,22 @@ func (p *Plugin) ApplyBlock(block modules.ConsensusBlock, bucket *persist.LazyBo
 	if err != nil {
 		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
 	}
-	btValue, err := rivbin.Marshal(block.Timestamp)
-	if err != nil {
-		return fmt.Errorf("failed to rivbin marshal block time: %v", err)
-	}
-	for idx := range block.MinerPayouts {
+	for idx, mp := range block.MinerPayouts {
 		mpid := types.CoinOutputID(block.MinerPayoutID(uint64(idx)))
 		bMPID, err := rivbin.Marshal(mpid)
 		if err != nil {
 			return fmt.Errorf("failed to rivbin marshal (miner payout ID as) coin output ID: %v", err)
 		}
-		err = coBucket.Put(bMPID, btValue)
+		bInfo, err := rivbin.Marshal(coinOutputDBInfo{
+			CreationTime:       block.Timestamp,
+			CreationValue:      mp.Value,
+			FeeComputationTime: 0,
+			IsCustodyFee:       false,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to rivbin marshal miner payout info: %v", err)
+		}
+		err = coBucket.Put(bMPID, bInfo)
 		if err != nil {
 			return fmt.Errorf("failed to link (miner payout ID as) coin output's ID to its block time: %v", err)
 		}
@@ -135,7 +208,7 @@ func (p *Plugin) ApplyBlock(block modules.ConsensusBlock, bucket *persist.LazyBo
 			SpentCoinOutputs:       block.SpentCoinOutputs,
 			SpentBlockStakeOutputs: block.SpentBlockStakeOutputs,
 		}
-		err = p.applyTransaction(cTxn, coBucket, btValue)
+		err = p.applyTransaction(cTxn, coBucket)
 		if err != nil {
 			return err
 		}
@@ -148,23 +221,26 @@ func (p *Plugin) ApplyBlockHeader(header modules.ConsensusBlockHeader, bucket *p
 	if bucket == nil {
 		return errors.New("custodyfee bucket does not exist")
 	}
-	if len(header.MinerPayouts) == 0 {
-		return nil // nothing to do
-	}
+	// apply miner payouts
 	coBucket, err := bucket.Bucket(bucketCoinOutputs)
 	if err != nil {
 		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
 	}
-	btValue, err := rivbin.Marshal(header.Timestamp)
-	if err != nil {
-		return fmt.Errorf("failed to rivbin marshal block time: %v", err)
-	}
-	for _, mpid := range header.MinerPayoutIDs {
+	for idx, mpid := range header.MinerPayoutIDs {
 		bMPID, err := rivbin.Marshal(mpid)
 		if err != nil {
 			return fmt.Errorf("failed to rivbin marshal (miner payout ID as) coin output ID: %v", err)
 		}
-		err = coBucket.Put(bMPID, btValue)
+		bInfo, err := rivbin.Marshal(coinOutputDBInfo{
+			CreationTime:       header.Timestamp,
+			CreationValue:      header.MinerPayouts[idx].Value,
+			FeeComputationTime: 0,
+			IsCustodyFee:       false,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to rivbin marshal miner payout info: %v", err)
+		}
+		err = coBucket.Put(bMPID, bInfo)
 		if err != nil {
 			return fmt.Errorf("failed to link (miner payout ID as) coin output's ID to its block time: %v", err)
 		}
@@ -181,26 +257,56 @@ func (p *Plugin) ApplyTransaction(txn modules.ConsensusTransaction, bucket *pers
 	if err != nil {
 		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
 	}
-	btValue, err := rivbin.Marshal(txn.BlockTime)
-	if err != nil {
-		return fmt.Errorf("failed to rivbin marshal block time: %v", err)
-	}
-	return p.applyTransaction(txn, coBucket, btValue)
+	return p.applyTransaction(txn, coBucket)
 }
 
-func (p *Plugin) applyTransaction(txn modules.ConsensusTransaction, coBucket *bolt.Bucket, blockTime []byte) error {
-	if len(txn.CoinOutputs) == 0 {
-		return nil // nothing to do
-	}
-	for index := range txn.CoinOutputs {
+func (p *Plugin) applyTransaction(txn modules.ConsensusTransaction, coBucket *bolt.Bucket) error {
+	var computationTime types.Timestamp
+	for index, co := range txn.CoinOutputs {
+		isCustodyFee := co.Condition.ConditionType() == cftypes.ConditionTypeCustodyFee
+		if isCustodyFee {
+			computationTime = co.Condition.Condition.(*cftypes.CustodyFeeCondition).ComputationTime
+		}
 		coid := txn.CoinOutputID(uint64(index))
 		bCOID, err := rivbin.Marshal(coid)
 		if err != nil {
 			return fmt.Errorf("failed to rivbin marshal coin output ID: %v", err)
 		}
-		err = coBucket.Put(bCOID, blockTime)
+		bInfo, err := rivbin.Marshal(coinOutputDBInfo{
+			CreationTime:       txn.BlockTime,
+			CreationValue:      co.Value,
+			FeeComputationTime: 0,
+			IsCustodyFee:       isCustodyFee,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to rivbin marshal coin output info: %v", err)
+		}
+		err = coBucket.Put(bCOID, bInfo)
 		if err != nil {
 			return fmt.Errorf("failed to link coin output's ID to its block time: %v", err)
+		}
+	}
+	for _, ci := range txn.CoinInputs {
+		currentInfo, err := getCoinOutputInfoPreComputation(coBucket, ci.ParentID)
+		if err != nil {
+			return fmt.Errorf("failed to look up coin input %s in custody fees DB: %v", ci.ParentID.String(), err)
+		}
+		bCOID, err := rivbin.Marshal(ci.ParentID)
+		if err != nil {
+			return fmt.Errorf("failed to rivbin marshal coin output (used as coin input) ID: %v", err)
+		}
+		bInfo, err := rivbin.Marshal(coinOutputDBInfo{
+			CreationTime:       currentInfo.CreationTime,
+			CreationValue:      currentInfo.CreationValue,
+			FeeComputationTime: computationTime,
+			IsCustodyFee:       false,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to rivbin marshal coin output (used as coin input) info: %v", err)
+		}
+		err = coBucket.Put(bCOID, bInfo)
+		if err != nil {
+			return fmt.Errorf("failed to link coin input's ID to its block time: %v", err)
 		}
 	}
 	return nil
@@ -217,7 +323,7 @@ func (p *Plugin) RevertBlock(block modules.ConsensusBlock, bucket *persist.LazyB
 		return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs: %v", err)
 	}
 	for idx := range block.MinerPayouts {
-		mpid := types.CoinOutputID(block.MinerPayoutID(uint64(idx)))
+		mpid := block.MinerPayoutID(uint64(idx))
 		bMPID, err := rivbin.Marshal(mpid)
 		if err != nil {
 			return fmt.Errorf("failed to rivbin marshal (miner payout ID as) coin output ID: %v", err)
@@ -296,6 +402,29 @@ func (p *Plugin) revertTransaction(txn modules.ConsensusTransaction, coBucket *b
 			return fmt.Errorf("failed to unlink coin output's ID from its block time: %v", err)
 		}
 	}
+	for _, ci := range txn.CoinInputs {
+		currentInfo, err := getCoinOutputInfoPreComputation(coBucket, ci.ParentID)
+		if err != nil {
+			return fmt.Errorf("failed to look up coin input %s in custody fees DB: %v", ci.ParentID.String(), err)
+		}
+		bCOID, err := rivbin.Marshal(ci.ParentID)
+		if err != nil {
+			return fmt.Errorf("failed to rivbin marshal coin output (used as coin input) ID: %v", err)
+		}
+		bInfo, err := rivbin.Marshal(coinOutputDBInfo{
+			CreationTime:       currentInfo.CreationTime,
+			CreationValue:      currentInfo.CreationValue,
+			FeeComputationTime: 0,
+			IsCustodyFee:       false,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to rivbin marshal coin output (used as coin input) info: %v", err)
+		}
+		err = coBucket.Put(bCOID, bInfo)
+		if err != nil {
+			return fmt.Errorf("failed to link coin input's ID to its block time: %v", err)
+		}
+	}
 	return nil
 }
 
@@ -360,18 +489,14 @@ func (p *Plugin) validateCustodyFeePresent(tx modules.ConsensusTransaction, ctx 
 	// ... look up each coin input in our plugin DB,
 	//     to check how much the fee will cost
 	for _, ci := range tx.CoinInputs {
-		ciTS, err := getCoinOutputTime(coBucket, ci.ParentID)
+		info, err := getCoinOutputInfo(coBucket, ci.ParentID, ctx.BlockTime)
 		if err != nil {
-			return fmt.Errorf("failed to look up creation timing of coin input %s: %v", ci.ParentID.String(), err)
+			return err
 		}
-		if ciTS > ctx.BlockTime {
-			return fmt.Errorf("spent coin output creation time is in the future, this is invalid: %d > %d", ciTS, ctx.BlockTime)
+		if info.Spent {
+			return fmt.Errorf("coin output %s is already marked as spent in the custody fees DB: cannot be spend again", ci.ParentID.String())
 		}
-		if ciTS == ctx.BlockTime {
-			continue // nothing to do
-		}
-		_, fee := AmountCustodyFeePairAfterXSeconds(tx.SpentCoinOutputs[ci.ParentID].Value, ctx.BlockTime-ciTS)
-		requiredCustodyFee = requiredCustodyFee.Add(fee)
+		requiredCustodyFee = requiredCustodyFee.Add(info.CustodyFee)
 	}
 
 	// ensure the custody fee is exactly as expected
@@ -385,26 +510,63 @@ func (p *Plugin) validateCustodyFeePresent(tx modules.ConsensusTransaction, ctx 
 	return nil
 }
 
-func getCoinOutputTime(coBucket *bolt.Bucket, id types.CoinOutputID) (types.Timestamp, error) {
+func getCoinOutputInfoPreComputation(coBucket *bolt.Bucket, id types.CoinOutputID) (CoinOutputInfoPreComputation, error) {
 	bID, err := rivbin.Marshal(id)
 	if err != nil {
-		return 0, fmt.Errorf("failed to rivbin marshal coin input parent ID: %v", err)
+		return CoinOutputInfoPreComputation{}, fmt.Errorf("failed to rivbin marshal coin input parent ID: %v", err)
 	}
 
 	b := coBucket.Get(bID)
 	if len(b) == 0 {
-		return 0, fmt.Errorf("failed to find timestamp in CustodyFee DB for coin input %s", id.String())
+		return CoinOutputInfoPreComputation{}, fmt.Errorf("failed to find timestamp in CustodyFee DB for coin input %s", id.String())
 	}
 
-	var ts types.Timestamp
-	err = rivbin.Unmarshal(b, &ts)
+	var dbInfo coinOutputDBInfo
+	err = rivbin.Unmarshal(b, &dbInfo)
 	if err != nil {
-		return 0, fmt.Errorf(
-			"failed to unmarshal coin output %s's timestamp 0x%s: %v",
-			id.String(), hex.EncodeToString(b), err)
+		return CoinOutputInfoPreComputation{}, fmt.Errorf(
+			"failed to unmarshal coin output %s's info: %v",
+			id.String(), err)
 	}
 
-	return ts, nil
+	return CoinOutputInfoPreComputation{
+		CreationTime:       dbInfo.CreationTime,
+		CreationValue:      dbInfo.CreationValue,
+		IsCustodyFee:       dbInfo.IsCustodyFee,
+		Spent:              !dbInfo.IsCustodyFee && dbInfo.FeeComputationTime > 0,
+		FeeComputationTime: dbInfo.FeeComputationTime,
+	}, nil
+}
+
+func getCoinOutputInfo(coBucket *bolt.Bucket, id types.CoinOutputID, chainTime types.Timestamp) (CoinOutputInfo, error) {
+	var info CoinOutputInfo
+	preComputationInfo, err := getCoinOutputInfoPreComputation(coBucket, id)
+	if err != nil {
+		return info, err
+	}
+	info.CreationTime = preComputationInfo.CreationTime
+	info.CreationValue = preComputationInfo.CreationValue
+	info.IsCustodyFee = preComputationInfo.IsCustodyFee
+	if info.IsCustodyFee {
+		return info, err // no fee is required, and nothing of it is spendable
+	}
+	if preComputationInfo.FeeComputationTime == 0 {
+		if info.CreationTime > chainTime {
+			return info, fmt.Errorf(
+				"unspent coin output %s is created in the future (%d) compared to given chain time %d",
+				id.String(), info.CreationTime, chainTime)
+		}
+		info.FeeComputationTime = chainTime
+	} else {
+		info.Spent = true
+		info.FeeComputationTime = preComputationInfo.FeeComputationTime
+	}
+	if info.FeeComputationTime != info.CreationTime {
+		info.SpendableValue, info.CustodyFee = AmountCustodyFeePairAfterXSeconds(info.CreationValue, info.CreationTime-info.FeeComputationTime)
+	} else {
+		info.SpendableValue = info.CreationValue
+	}
+	return info, nil
 }
 
 // Close unregisters the plugin from the consensus

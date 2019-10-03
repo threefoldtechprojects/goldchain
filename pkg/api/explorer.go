@@ -62,9 +62,13 @@ type (
 
 	// CustodyFeeInfo contains the fee for a certain coin output as well as the age at the time of fee calculation.
 	CustodyFeeInfo struct {
-		Value rtypes.Currency  `json:"value"` // value still spendable
-		Fee   rtypes.Currency  `json:"fee"`
-		Age   rtypes.Timestamp `json:"age"`
+		CreationTime       rtypes.Timestamp `json:"creationtime"`
+		CreationValue      rtypes.Currency  `json:"creationvalue"`
+		IsCustodyFee       bool             `json:"iscustodyfee"`
+		Spent              bool             `json:"spent"`
+		FeeComputationTime rtypes.Timestamp `json:"feecomputationtime"`
+		CustodyFee         rtypes.Currency  `json:"custodyfee"`
+		SpendableValue     rtypes.Currency  `json:"spendablevalue"`
 	}
 )
 
@@ -349,10 +353,10 @@ func buildExplorerBlock(explorer modules.Explorer, plugin *custodyfees.Plugin, c
 		mpoids      []rtypes.CoinOutputID
 		custodyFees []CustodyFeeInfo
 	)
-	for i, mp := range block.MinerPayouts {
+	for i := range block.MinerPayouts {
 		mpoid := block.MinerPayoutID(uint64(i))
 		mpoids = append(mpoids, mpoid)
-		feeInfo, err := getCoinOutputCustodyFeeInfo(plugin, chainTime, rtypes.CoinOutputID(mpoid), mp.Value)
+		feeInfo, err := getCoinOutputCustodyFeeInfo(plugin, chainTime, rtypes.CoinOutputID(mpoid))
 		if err != nil {
 			build.Severe("error while fetching custody info for coin output", err)
 		}
@@ -501,7 +505,7 @@ func buildExplorerTransactionWithMappedCoinOutputs(explorer modules.Explorer, pl
 		if !ok {
 			build.Severe("could not find corresponding coin output")
 		}
-		feeInfo, err := getCoinOutputCustodyFeeInfo(plugin, feeComputationTime, sci.ParentID, sco.Value)
+		feeInfo, err := getCoinOutputCustodyFeeInfo(plugin, feeComputationTime, sci.ParentID)
 		if err != nil {
 			build.Severe("error while fetching custody info for coin output", err)
 		}
@@ -519,7 +523,7 @@ func buildExplorerTransactionWithMappedCoinOutputs(explorer modules.Explorer, pl
 		et.CoinOutputIDs = append(et.CoinOutputIDs, coid)
 		et.CoinOutputUnlockHashes = append(et.CoinOutputUnlockHashes, co.Condition.UnlockHash())
 		if confirmed {
-			feeInfo, err := getCoinOutputCustodyFeeInfo(plugin, chainTime, coid, co.Value)
+			feeInfo, err := getCoinOutputCustodyFeeInfo(plugin, chainTime, coid)
 			if err != nil {
 				build.Severe("error while fetching custody info for coin output", err)
 			}
@@ -547,21 +551,20 @@ func buildExplorerTransactionWithMappedCoinOutputs(explorer modules.Explorer, pl
 	return et
 }
 
-func getCoinOutputCustodyFeeInfo(plugin *custodyfees.Plugin, chainTime rtypes.Timestamp, coid rtypes.CoinOutputID, value rtypes.Currency) (CustodyFeeInfo, error) {
-	ct, err := plugin.GetCoinOutputCreationTime(coid)
+func getCoinOutputCustodyFeeInfo(plugin *custodyfees.Plugin, chainTime rtypes.Timestamp, coid rtypes.CoinOutputID) (CustodyFeeInfo, error) {
+	info, err := plugin.GetCoinOutputInfo(coid, chainTime)
 	if err != nil {
 		// acceptable in case coin output has already been spent
 		return CustodyFeeInfo{}, nil
 	}
-	if ct > chainTime {
-		return CustodyFeeInfo{}, fmt.Errorf("invalid coin output creation time %d, is in future compared to current chain time %d", ct, chainTime)
-	}
-	age := chainTime - ct
-	svalue, fee := custodyfees.AmountCustodyFeePairAfterXSeconds(value, age)
 	return CustodyFeeInfo{
-		Value: svalue,
-		Fee:   fee,
-		Age:   age,
+		CreationTime:       info.CreationTime,
+		CreationValue:      info.CreationValue,
+		IsCustodyFee:       info.IsCustodyFee,
+		Spent:              info.Spent,
+		FeeComputationTime: info.FeeComputationTime,
+		CustodyFee:         info.CustodyFee,
+		SpendableValue:     info.SpendableValue,
 	}, nil
 }
 

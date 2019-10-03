@@ -22,6 +22,7 @@ import (
 
 	cfplugin "github.com/nbh-digital/goldchain/extensions/custodyfees"
 	cfapi "github.com/nbh-digital/goldchain/extensions/custodyfees/api"
+	cfexplorer "github.com/nbh-digital/goldchain/extensions/custodyfees/modules/explorer"
 	"github.com/nbh-digital/goldchain/modules/wallet"
 	goldchainapi "github.com/nbh-digital/goldchain/pkg/api"
 
@@ -52,7 +53,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 		modulesToLoad = moduleIdentifiers.Len()
 	)
 	printModuleIsLoading := func(name string) {
-		fmt.Printf("Loading %s (%d/%d)...\r\n", name, i, modulesToLoad)
+		fmt.Printf("Loading %s (%d/%d)...\r\n", name, i+1, modulesToLoad)
 		i++
 	}
 
@@ -287,6 +288,24 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			mintingapi.RegisterExplorerMintingHTTPHandlers(router, mintingPlugin)
 			authcointxapi.RegisterExplorerAuthCoinHTTPHandlers(router, authCoinTxPlugin)
 			cfapi.RegisterExplorerCustodyFeesHTTPHandlers(router, cs, custodyFeesPlugin)
+
+			// add also the custody fee explorer
+			cfe, err := cfexplorer.New(cs,
+				filepath.Join(cfg.RootPersistentDir, modules.ExplorerDir, "custodyfees"),
+				cfg.BlockchainInfo, networkCfg.Constants, cfg.VerboseLogging)
+			if err != nil {
+				servErrs <- err
+				cancel()
+				return
+			}
+			// TODO add custody fee HTTP API
+			defer func() {
+				fmt.Println("Closing explorer...")
+				err := cfe.Close()
+				if err != nil {
+					fmt.Println("Error during custody fee explorer shutdown:", err)
+				}
+			}()
 		}
 
 		fmt.Println("Setting up root HTTP API handler...")

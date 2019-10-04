@@ -285,10 +285,6 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				}
 			}()
 
-			mintingapi.RegisterExplorerMintingHTTPHandlers(router, mintingPlugin)
-			authcointxapi.RegisterExplorerAuthCoinHTTPHandlers(router, authCoinTxPlugin)
-			cfapi.RegisterExplorerCustodyFeesHTTPHandlers(router, cs, custodyFeesPlugin)
-
 			// add also the custody fee explorer
 			cfe, err := cfexplorer.New(cs, custodyFeesPlugin,
 				filepath.Join(cfg.RootPersistentDir, modules.ExplorerDir, "custodyfees"),
@@ -298,7 +294,6 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				cancel()
 				return
 			}
-			// TODO add custody fee HTTP API
 			defer func() {
 				fmt.Println("Closing explorer...")
 				err := cfe.Close()
@@ -306,6 +301,11 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 					fmt.Println("Error during custody fee explorer shutdown:", err)
 				}
 			}()
+
+			mintingapi.RegisterExplorerMintingHTTPHandlers(router, mintingPlugin)
+			authcointxapi.RegisterExplorerAuthCoinHTTPHandlers(router, authCoinTxPlugin)
+			cfapi.RegisterExplorerCustodyFeesHTTPHandlers(router, cs, custodyFeesPlugin, cfe)
+
 		}
 
 		fmt.Println("Setting up root HTTP API handler...")

@@ -35,11 +35,11 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 
 		// get unspentCoinOutputsBucket and bucketSpentCoinOutputs to update it
 		ucoBucket := tx.Bucket(bucketUnspentCoinOutputs)
-		if ucoBucket != nil {
+		if ucoBucket == nil {
 			return fmt.Errorf("corrupt Custody Fee Explorer: did not find bucket %s", string(bucketUnspentCoinOutputs))
 		}
 		scoBucket := tx.Bucket(bucketSpentCoinOutputs)
-		if ucoBucket != nil {
+		if ucoBucket == nil {
 			return fmt.Errorf("corrupt Custody Fee Explorer: did not find bucket %s", string(bucketSpentCoinOutputs))
 		}
 
@@ -113,7 +113,7 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 
 		// get bucketMetrics to update it
 		metricsBucket := tx.Bucket(bucketMetrics)
-		if metricsBucket != nil {
+		if metricsBucket == nil {
 			return fmt.Errorf("corrupt Custody Fee Explorer: did not find bucket %s", string(bucketMetrics))
 		}
 
@@ -127,6 +127,9 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 		// compute new chain facts
 		// ... set height/time info
 		facts.Height = blockheight
+		if facts.Height > 0 {
+			facts.Height-- // we want latest block height, not amount of blocks
+		}
 		facts.Time = blocktime
 		// ... set aggregated currency info
 		err = e.plugin.ViewCoinOutputInfo(func(view custodyfees.CoinOutputInfoView) error {
@@ -160,7 +163,7 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 				// get spendable and custody fee
 				info, err = view.GetCoinOutputInfo(coid, blocktime)
 				if err != nil {
-					return err
+					return fmt.Errorf("failed to get info for unspent coin output %s at block time %d: %v", coid.String(), blocktime, err)
 				}
 				// log some stuff that are not critical but might slightly mess up the aggregated sats
 				if info.Spent {

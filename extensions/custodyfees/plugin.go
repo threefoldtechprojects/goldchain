@@ -93,7 +93,7 @@ func (view *txCoinOutputInfoView) GetCoinOutputInfo(id types.CoinOutputID, chain
 	if coBucket == nil {
 		return CoinOutputInfo{}, fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs")
 	}
-	return getCoinOutputInfo(coBucket, id, chainTime)
+	return getCoinOutputInfo(coBucket, id, chainTime, true)
 }
 
 func (view *txCoinOutputInfoView) GetCoinOutputInfoPreComputation(id types.CoinOutputID) (CoinOutputInfoPreComputation, error) {
@@ -300,6 +300,11 @@ func (p *Plugin) applyTransaction(txn modules.ConsensusTransaction, coBucket *bo
 		if err != nil {
 			return fmt.Errorf("failed to rivbin marshal coin output (used as coin input) ID: %v", err)
 		}
+		if currentInfo.CreationTime > computationTime {
+			return fmt.Errorf(
+				"spent coin output %s is created in the future (%d) compared to given computation time %d",
+				ci.ParentID.String(), currentInfo.CreationTime, computationTime)
+		}
 		bInfo, err := rivbin.Marshal(coinOutputDBInfo{
 			CreationTime:       currentInfo.CreationTime,
 			CreationValue:      currentInfo.CreationValue,
@@ -494,7 +499,7 @@ func (p *Plugin) validateCustodyFeePresent(tx modules.ConsensusTransaction, ctx 
 	// ... look up each coin input in our plugin DB,
 	//     to check how much the fee will cost
 	for _, ci := range tx.CoinInputs {
-		info, err := getCoinOutputInfo(coBucket, ci.ParentID, ctx.BlockTime)
+		info, err := getCoinOutputInfo(coBucket, ci.ParentID, ctx.BlockTime, false)
 		if err != nil {
 			return err
 		}
@@ -543,7 +548,7 @@ func getCoinOutputInfoPreComputation(coBucket *bolt.Bucket, id types.CoinOutputI
 	}, nil
 }
 
-func getCoinOutputInfo(coBucket *bolt.Bucket, id types.CoinOutputID, chainTime types.Timestamp) (CoinOutputInfo, error) {
+func getCoinOutputInfo(coBucket *bolt.Bucket, id types.CoinOutputID, chainTime types.Timestamp, autoCorrectChainTime bool) (CoinOutputInfo, error) {
 	var info CoinOutputInfo
 	preComputationInfo, err := getCoinOutputInfoPreComputation(coBucket, id)
 	if err != nil {
@@ -557,17 +562,21 @@ func getCoinOutputInfo(coBucket *bolt.Bucket, id types.CoinOutputID, chainTime t
 	}
 	if preComputationInfo.FeeComputationTime == 0 {
 		if info.CreationTime > chainTime {
-			return info, fmt.Errorf(
-				"unspent coin output %s is created in the future (%d) compared to given chain time %d",
-				id.String(), info.CreationTime, chainTime)
+			if !autoCorrectChainTime {
+				return info, fmt.Errorf(
+					"unspent coin output %s is created in the future (%d) compared to given chain time %d",
+					id.String(), info.CreationTime, chainTime)
+			}
+			info.FeeComputationTime = info.CreationTime
+		} else {
+			info.FeeComputationTime = chainTime
 		}
-		info.FeeComputationTime = chainTime
 	} else {
 		info.Spent = true
 		info.FeeComputationTime = preComputationInfo.FeeComputationTime
 	}
 	if info.FeeComputationTime != info.CreationTime {
-		info.SpendableValue, info.CustodyFee = AmountCustodyFeePairAfterXSeconds(info.CreationValue, info.CreationTime-info.FeeComputationTime)
+		info.SpendableValue, info.CustodyFee = AmountCustodyFeePairAfterXSeconds(info.CreationValue, info.FeeComputationTime-info.CreationTime)
 	} else {
 		info.SpendableValue = info.CreationValue
 	}

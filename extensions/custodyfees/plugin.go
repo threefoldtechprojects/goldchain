@@ -70,6 +70,40 @@ type (
 	}
 )
 
+type (
+	// CoinOutputInfoView allows you to view multiple coin outputs in a single View *bolt.Tx,
+	// useful in case you want to get the info for multiple coin outputs.
+	CoinOutputInfoView interface {
+		// GetCoinOutputInfo returns the custody fee related coin output information for a given coin output ID,
+		// returns an error only if the coin out never existed (spent or not).
+		GetCoinOutputInfo(id types.CoinOutputID, chainTime types.Timestamp) (CoinOutputInfo, error)
+		// GetCoinOutputInfoPreComputation returns the custody fee related coin output information for a given coin output ID,
+		// returns an error only if the coin out never existed (spent or not).
+		// Similar to `GetCoinOutputInfo` with the difference that the fee and spendable value aren't calculated yet.
+		GetCoinOutputInfoPreComputation(id types.CoinOutputID) (CoinOutputInfoPreComputation, error)
+	}
+
+	txCoinOutputInfoView struct {
+		rootBucket *bolt.Bucket
+	}
+)
+
+func (view *txCoinOutputInfoView) GetCoinOutputInfo(id types.CoinOutputID, chainTime types.Timestamp) (CoinOutputInfo, error) {
+	coBucket := view.rootBucket.Bucket(bucketCoinOutputs)
+	if coBucket == nil {
+		return CoinOutputInfo{}, fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs")
+	}
+	return getCoinOutputInfo(coBucket, id, chainTime)
+}
+
+func (view *txCoinOutputInfoView) GetCoinOutputInfoPreComputation(id types.CoinOutputID) (CoinOutputInfoPreComputation, error) {
+	coBucket := view.rootBucket.Bucket(bucketCoinOutputs)
+	if coBucket == nil {
+		return CoinOutputInfoPreComputation{}, fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs")
+	}
+	return getCoinOutputInfoPreComputation(coBucket, id)
+}
+
 // NewPlugin creates a new CustodyFee Plugin,
 // also registering the condition type
 func NewPlugin(maxAllowedComputationTimeAdvance types.Timestamp) *Plugin {
@@ -85,43 +119,13 @@ func NewPlugin(maxAllowedComputationTimeAdvance types.Timestamp) *Plugin {
 // GetCoinOutputInfo returns the custody fee related coin output information for a given coin output ID,
 // returns an error only if the coin out never existed (spent or not).
 func (p *Plugin) GetCoinOutputInfo(id types.CoinOutputID, chainTime types.Timestamp) (CoinOutputInfo, error) {
-	var preComputationInfo CoinOutputInfoPreComputation
-	err := p.storage.View(func(rootBucket *bolt.Bucket) error {
-		coBucket := rootBucket.Bucket(bucketCoinOutputs)
-		if coBucket == nil {
-			return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs")
-		}
+	var info CoinOutputInfo
+	err := p.ViewCoinOutputInfo(func(view CoinOutputInfoView) error {
 		var err error
-		preComputationInfo, err = getCoinOutputInfoPreComputation(coBucket, id)
+		info, err = view.GetCoinOutputInfo(id, chainTime)
 		return err
 	})
-	if err != nil {
-		return CoinOutputInfo{}, err
-	}
-	var info CoinOutputInfo
-	info.CreationTime = preComputationInfo.CreationTime
-	info.CreationValue = preComputationInfo.CreationValue
-	info.IsCustodyFee = preComputationInfo.IsCustodyFee
-	if info.IsCustodyFee {
-		return info, err // no fee is required, and nothing of it is spendable
-	}
-	if preComputationInfo.FeeComputationTime == 0 {
-		if info.CreationTime > chainTime {
-			return info, fmt.Errorf(
-				"unspent coin output %s is created in the future (%d) compared to given chain time %d",
-				id.String(), info.CreationTime, chainTime)
-		}
-		info.FeeComputationTime = chainTime
-	} else {
-		info.Spent = true
-		info.FeeComputationTime = preComputationInfo.FeeComputationTime
-	}
-	if info.FeeComputationTime != info.CreationTime {
-		info.SpendableValue, info.CustodyFee = AmountCustodyFeePairAfterXSeconds(info.CreationValue, info.FeeComputationTime-info.CreationTime)
-	} else {
-		info.SpendableValue = info.CreationValue
-	}
-	return info, nil
+	return info, err
 }
 
 // GetCoinOutputInfoPreComputation returns the custody fee related coin output information for a given coin output ID,
@@ -129,19 +133,20 @@ func (p *Plugin) GetCoinOutputInfo(id types.CoinOutputID, chainTime types.Timest
 // Similar to `GetCoinOutputInfo` with the difference that the fee and spendable value aren't calculated yet.
 func (p *Plugin) GetCoinOutputInfoPreComputation(id types.CoinOutputID) (CoinOutputInfoPreComputation, error) {
 	var info CoinOutputInfoPreComputation
-	err := p.storage.View(func(rootBucket *bolt.Bucket) error {
-		coBucket := rootBucket.Bucket(bucketCoinOutputs)
-		if coBucket == nil {
-			return fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs")
-		}
+	err := p.ViewCoinOutputInfo(func(view CoinOutputInfoView) error {
 		var err error
-		info, err = getCoinOutputInfoPreComputation(coBucket, id)
+		info, err = view.GetCoinOutputInfoPreComputation(id)
 		return err
 	})
-	if err != nil {
-		return CoinOutputInfoPreComputation{}, err
-	}
-	return info, nil
+	return info, err
+}
+
+// ViewCoinOutputInfo allows you to view the info for one or multiple coin outputs,
+// in a single *bolt.Tx view.
+func (p *Plugin) ViewCoinOutputInfo(f func(CoinOutputInfoView) error) error {
+	return p.storage.View(func(rootBucket *bolt.Bucket) error {
+		return f(&txCoinOutputInfoView{rootBucket})
+	})
 }
 
 // InitPlugin initializes the Bucket for the first time

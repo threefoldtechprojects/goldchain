@@ -9,16 +9,15 @@ import (
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/persist"
 	"github.com/threefoldtech/rivine/types"
-)
 
-var (
-	errNilCS = errors.New("explorer cannot use a nil consensus set")
+	"github.com/nbh-digital/goldchain/extensions/custodyfees"
 )
 
 type (
 	// Explorer is a Custody Fee Explorer Keeps some global metrics about custody fees.
 	Explorer struct {
 		cs         modules.ConsensusSet
+		plugin     *custodyfees.Plugin
 		db         *persist.BoltDatabase
 		log        *persist.Logger
 		persistDir string
@@ -29,15 +28,18 @@ type (
 
 // New creates the internal data structures, and subscribes to
 // consensus for changes to the blockchain
-func New(cs modules.ConsensusSet, persistDir string, bcInfo types.BlockchainInfo, chainCts types.ChainConstants, verboseLogging bool) (*Explorer, error) {
-	// Check that input modules are non-nil
+func New(cs modules.ConsensusSet, plugin *custodyfees.Plugin, persistDir string, bcInfo types.BlockchainInfo, chainCts types.ChainConstants, verboseLogging bool) (*Explorer, error) {
 	if cs == nil {
-		return nil, errNilCS
+		return nil, errors.New("no ConsensusSet given while one is required")
+	}
+	if plugin == nil {
+		return nil, errors.New("no Custody Fees plugin given while one is required")
 	}
 
 	// Initialize the explorer.
 	e := &Explorer{
 		cs:         cs,
+		plugin:     plugin,
 		persistDir: persistDir,
 		bcInfo:     bcInfo,
 		chainCts:   chainCts,

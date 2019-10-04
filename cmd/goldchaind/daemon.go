@@ -290,7 +290,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			cfapi.RegisterExplorerCustodyFeesHTTPHandlers(router, cs, custodyFeesPlugin)
 
 			// add also the custody fee explorer
-			cfe, err := cfexplorer.New(cs,
+			cfe, err := cfexplorer.New(cs, custodyFeesPlugin,
 				filepath.Join(cfg.RootPersistentDir, modules.ExplorerDir, "custodyfees"),
 				cfg.BlockchainInfo, networkCfg.Constants, cfg.VerboseLogging)
 			if err != nil {

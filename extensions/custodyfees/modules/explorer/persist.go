@@ -72,33 +72,39 @@ func (e *Explorer) initPersist(verbose bool) error {
 			}
 		}
 
-		factsBucket, err := tx.CreateBucketIfNotExists(bucketChainFacts)
+		metricsBucket, err := tx.CreateBucketIfNotExists(bucketMetrics)
 		if err != nil {
 			return err
 		}
 
 		// set default values for the bucketChainFacts
-		zeroCurrencyBytes, err := rivbin.Marshal(types.NewCurrency64(0))
+		defaultChainFactsBytes, err := rivbin.Marshal(ChainFacts{})
 		if err != nil {
 			return err
 		}
 		factsDefaults := []struct {
 			key, val []byte
 		}{
-			{keyFactTotalSpentCoins, zeroCurrencyBytes},
-			{keyFactTotalLiquidCoins, zeroCurrencyBytes},
-			{keyFactTotalLockedCoins, zeroCurrencyBytes},
-			{keyFactTotalFeesPaid, zeroCurrencyBytes},
-			{keyFactTotalFeeDebt, zeroCurrencyBytes},
+			{keyMetricChainFacts, defaultChainFactsBytes},
 		}
 		for _, d := range factsDefaults {
-			if factsBucket.Get(d.key) != nil {
+			if metricsBucket.Get(d.key) != nil {
 				continue
 			}
-			err = factsBucket.Put(d.key, d.val)
+			err = metricsBucket.Put(d.key, d.val)
 			if err != nil {
 				return err
 			}
+		}
+
+		_, err = tx.CreateBucketIfNotExists(bucketUnspentCoinOutputs)
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.CreateBucketIfNotExists(bucketSpentCoinOutputs)
+		if err != nil {
+			return err
 		}
 
 		return nil

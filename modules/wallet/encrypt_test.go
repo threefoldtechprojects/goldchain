@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/nbh-digital/goldchain/extensions/custodyfees"
 	"github.com/threefoldtech/rivine/crypto"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/types"
@@ -109,9 +110,10 @@ func TestIntegrationPreEncryption(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	plugin := custodyfees.NewPlugin(1000)
 	// Create a second wallet using the same directory - make sure that if any
 	// files have been created, the wallet is still being treated as new.
-	w1, err := New(wt.cs, wt.tpool,
+	w1, err := New(wt.cs, wt.tpool, plugin,
 		filepath.Join(wt.persistDir, modules.WalletDir),
 		types.DefaultBlockchainInfo(), types.TestnetChainConstants(), false)
 	if err != nil {

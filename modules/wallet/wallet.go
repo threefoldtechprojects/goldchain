@@ -15,6 +15,8 @@ import (
 	"github.com/threefoldtech/rivine/persist"
 	siasync "github.com/threefoldtech/rivine/sync"
 	"github.com/threefoldtech/rivine/types"
+
+	"github.com/nbh-digital/goldchain/extensions/custodyfees"
 )
 
 const (
@@ -26,9 +28,10 @@ const (
 )
 
 var (
-	errNilConsensusSet = errors.New("wallet cannot initialize with a nil consensus set")
-	errNilTpool        = errors.New("wallet cannot initialize with a nil transaction pool")
-	errUnknownAddress  = errors.New("given wallet address is not known")
+	errNilConsensusSet      = errors.New("wallet cannot initialize with a nil consensus set")
+	errNilTpool             = errors.New("wallet cannot initialize with a nil transaction pool")
+	errNilCustodyFeesPlugin = errors.New("wallet cannot initialize with a nil Custody Fees plugin")
+	errUnknownAddress       = errors.New("given wallet address is not known")
 )
 
 // spendableKey is a set of secret keys plus the corresponding unlock
@@ -69,6 +72,7 @@ type Wallet struct {
 	// set; queries to the consensus set are very slow.
 	cs                 modules.ConsensusSet
 	tpool              modules.TransactionPool
+	cfplugin           *custodyfees.Plugin
 	consensusSetHeight types.BlockHeight
 
 	// The following set of fields are responsible for tracking the confirmed
@@ -131,7 +135,7 @@ type historicOutput struct {
 // name and then using the file to save in the future. Keys and addresses are
 // not loaded into the wallet during the call to 'new', but rather during the
 // call to 'Unlock'.
-func New(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir string, bcInfo types.BlockchainInfo, chainCts types.ChainConstants, verboseLogging bool) (*Wallet, error) {
+func New(cs modules.ConsensusSet, tpool modules.TransactionPool, plugin *custodyfees.Plugin, persistDir string, bcInfo types.BlockchainInfo, chainCts types.ChainConstants, verboseLogging bool) (*Wallet, error) {
 	// Check for nil dependencies.
 	if cs == nil {
 		return nil, errNilConsensusSet
@@ -139,12 +143,15 @@ func New(cs modules.ConsensusSet, tpool modules.TransactionPool, persistDir stri
 	if tpool == nil {
 		return nil, errNilTpool
 	}
+	if plugin == nil {
+		return nil, errNilCustodyFeesPlugin
+	}
 
 	// Initialize the data structure.
 	w := &Wallet{
-		cs:    cs,
-		tpool: tpool,
-
+		cs:                        cs,
+		tpool:                     tpool,
+		cfplugin:                  plugin,
 		keys:                      make(map[types.UnlockHash]spendableKey),
 		coinOutputs:               make(map[types.CoinOutputID]types.CoinOutput),
 		blockstakeOutputs:         make(map[types.BlockStakeOutputID]types.BlockStakeOutput),

@@ -8,6 +8,8 @@ import (
 	"github.com/threefoldtech/rivine/build"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/types"
+
+	"github.com/nbh-digital/goldchain/extensions/custodyfees"
 )
 
 // various errors returned by the wallet
@@ -37,10 +39,21 @@ func (w *Wallet) ConfirmedBalance() (coinBalance types.Currency, blockstakeBalan
 	ctx := w.getFulfillableContextForLatestBlock()
 
 	// get all coin and block stake stum
-	for _, sco := range w.coinOutputs {
-		if sco.Condition.Fulfillable(ctx) {
-			coinBalance = coinBalance.Add(sco.Value)
+	err = w.cfplugin.ViewCoinOutputInfo(func(view custodyfees.CoinOutputInfoView) error {
+		var info custodyfees.CoinOutputInfo
+		for scoid, sco := range w.coinOutputs {
+			if sco.Condition.Fulfillable(ctx) {
+				info, err = view.GetCoinOutputInfo(scoid, ctx.BlockTime)
+				if err != nil {
+					return err
+				}
+				coinBalance = coinBalance.Add(info.SpendableValue)
+			}
 		}
+		return nil
+	})
+	if err != nil {
+		return
 	}
 	for _, sfo := range w.blockstakeOutputs {
 		if sfo.Condition.Fulfillable(ctx) {
@@ -65,16 +78,56 @@ func (w *Wallet) ConfirmedLockedBalance() (coinBalance types.Currency, blockstak
 	ctx := w.getFulfillableContextForLatestBlock()
 
 	// get all coin and block stake stum
-	for _, sco := range w.coinOutputs {
-		if !sco.Condition.Fulfillable(ctx) {
-			coinBalance = coinBalance.Add(sco.Value)
+	err = w.cfplugin.ViewCoinOutputInfo(func(view custodyfees.CoinOutputInfoView) error {
+		var info custodyfees.CoinOutputInfo
+		for scoid, sco := range w.coinOutputs {
+			if !sco.Condition.Fulfillable(ctx) {
+				info, err = view.GetCoinOutputInfo(scoid, ctx.BlockTime)
+				if err != nil {
+					return err
+				}
+				coinBalance = coinBalance.Add(info.SpendableValue)
+			}
 		}
+		return nil
+	})
+	if err != nil {
+		return
 	}
 	for _, sfo := range w.blockstakeOutputs {
 		if !sfo.Condition.Fulfillable(ctx) {
 			blockstakeBalance = blockstakeBalance.Add(sfo.Value)
 		}
 	}
+	return
+}
+
+// ConfirmedCustodyFeesToBePaid returns the total amount of custody fees to be paid
+// for all unlocked and locked confirmed coin outputs, in case you would spent them all.
+func (w *Wallet) ConfirmedCustodyFeesToBePaid() (fees types.Currency, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if !w.unlocked {
+		err = modules.ErrLockedWallet
+		return
+	}
+
+	// prepare fulfillable context
+	ctx := w.getFulfillableContextForLatestBlock()
+
+	// get all coin and block stake stum
+	err = w.cfplugin.ViewCoinOutputInfo(func(view custodyfees.CoinOutputInfoView) error {
+		var info custodyfees.CoinOutputInfo
+		for scoid := range w.coinOutputs {
+			info, err = view.GetCoinOutputInfo(scoid, ctx.BlockTime)
+			if err != nil {
+				return err
+			}
+			fees = fees.Add(info.CustodyFee)
+		}
+		return nil
+	})
 	return
 }
 

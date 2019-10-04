@@ -23,6 +23,7 @@ import (
 	cfplugin "github.com/nbh-digital/goldchain/extensions/custodyfees"
 	cfapi "github.com/nbh-digital/goldchain/extensions/custodyfees/api"
 	cfexplorer "github.com/nbh-digital/goldchain/extensions/custodyfees/modules/explorer"
+	goldchainmodules "github.com/nbh-digital/goldchain/modules"
 	"github.com/nbh-digital/goldchain/modules/wallet"
 	goldchainapi "github.com/nbh-digital/goldchain/pkg/api"
 
@@ -224,10 +225,10 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				}
 			}()
 		}
-		var w modules.Wallet
+		var w goldchainmodules.Wallet
 		if moduleIdentifiers.Contains(daemon.WalletModule.Identifier()) {
 			printModuleIsLoading("wallet")
-			w, err = wallet.New(cs, tpool,
+			w, err = wallet.New(cs, tpool, custodyFeesPlugin,
 				filepath.Join(cfg.RootPersistentDir, modules.WalletDir),
 				cfg.BlockchainInfo, networkCfg.Constants, cfg.VerboseLogging)
 			if err != nil {
@@ -235,7 +236,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				cancel()
 				return
 			}
-			rivineapi.RegisterWalletHTTPHandlers(router, w, cfg.APIPassword)
+			goldchainapi.RegisterWalletHTTPHandlers(router, w, cfg.APIPassword)
 			defer func() {
 				fmt.Println("Closing wallet...")
 				err := w.Close()

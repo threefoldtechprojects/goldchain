@@ -21,9 +21,13 @@ const (
 
 var (
 	bucketCoinOutputs = []byte("coinoutputs")
+	// block times,
+	// used so we can go back in time and allow timestamp checks of previous blocks
+	bucketBlockTime = []byte("blockTimes")
 
 	allBuckets = [][]byte{
 		bucketCoinOutputs,
+		bucketBlockTime,
 	}
 )
 
@@ -31,6 +35,7 @@ type (
 	// Plugin is a struct defines the custodyfee plugin
 	Plugin struct {
 		maxAllowedComputationTimeAdvance types.Timestamp
+		maxFallbackBlocksInThePast       types.BlockHeight
 
 		storage            modules.PluginViewStorage
 		unregisterCallback modules.PluginUnregisterCallback
@@ -106,13 +111,17 @@ func (view *txCoinOutputInfoView) GetCoinOutputInfoPreComputation(id types.CoinO
 
 // NewPlugin creates a new CustodyFee Plugin,
 // also registering the condition type
-func NewPlugin(maxAllowedComputationTimeAdvance types.Timestamp) *Plugin {
+func NewPlugin(maxAllowedComputationTimeAdvance types.Timestamp, maxFallbackBlocksInThePast types.BlockHeight) *Plugin {
 	if maxAllowedComputationTimeAdvance == 0 {
+		panic("maxAllowedComputationTimeAdvance has to have a value greater than 0")
+	}
+	if maxFallbackBlocksInThePast == 0 {
 		panic("maxAllowedComputationTimeAdvance has to have a value greater than 0")
 	}
 	types.RegisterUnlockConditionType(cftypes.ConditionTypeCustodyFee, func() types.MarshalableUnlockCondition { return &cftypes.CustodyFeeCondition{} })
 	return &Plugin{
 		maxAllowedComputationTimeAdvance: maxAllowedComputationTimeAdvance,
+		maxFallbackBlocksInThePast:       maxFallbackBlocksInThePast,
 	}
 }
 
@@ -218,7 +227,11 @@ func (p *Plugin) ApplyBlock(block modules.ConsensusBlock, bucket *persist.LazyBo
 			return err
 		}
 	}
-	return nil
+	blockTimeBucket, err := bucket.Bucket(bucketBlockTime)
+	if err != nil {
+		return fmt.Errorf("corrupt Custody Fees plugin DB: %v", err)
+	}
+	return setStatsBlockTime(blockTimeBucket, block.Height, block.Timestamp)
 }
 
 // ApplyBlockHeader applies data from a block header to the custodyfee bucket.
@@ -250,7 +263,11 @@ func (p *Plugin) ApplyBlockHeader(header modules.ConsensusBlockHeader, bucket *p
 			return fmt.Errorf("failed to link (miner payout ID as) coin output's ID to its block time: %v", err)
 		}
 	}
-	return nil
+	blockTimeBucket, err := bucket.Bucket(bucketBlockTime)
+	if err != nil {
+		return fmt.Errorf("corrupt Custody Fees plugin DB: %v", err)
+	}
+	return setStatsBlockTime(blockTimeBucket, header.Height, header.Timestamp)
 }
 
 // ApplyTransaction applies a custodyfee transactions to the custodyfee bucket.
@@ -357,16 +374,17 @@ func (p *Plugin) RevertBlock(block modules.ConsensusBlock, bucket *persist.LazyB
 			return err
 		}
 	}
-	return nil
+	blockTimeBucket, err := bucket.Bucket(bucketBlockTime)
+	if err != nil {
+		return fmt.Errorf("corrupt Custody Fees plugin DB: %v", err)
+	}
+	return deleteStatsBlockTime(blockTimeBucket, block.Height)
 }
 
 // RevertBlockHeader reverts data from a block header from the custodyfee bucket.
 func (p *Plugin) RevertBlockHeader(header modules.ConsensusBlockHeader, bucket *persist.LazyBoltBucket) error {
 	if bucket == nil {
 		return errors.New("custodyfee bucket does not exist")
-	}
-	if len(header.MinerPayouts) == 0 {
-		return nil // nothing to do
 	}
 	coBucket, err := bucket.Bucket(bucketCoinOutputs)
 	if err != nil {
@@ -382,7 +400,11 @@ func (p *Plugin) RevertBlockHeader(header modules.ConsensusBlockHeader, bucket *
 			return fmt.Errorf("failed to unlink (miner payout ID as) coin output's ID from its block time: %v", err)
 		}
 	}
-	return nil
+	blockTimeBucket, err := bucket.Bucket(bucketBlockTime)
+	if err != nil {
+		return fmt.Errorf("corrupt 3bot plugin DB: %v", err)
+	}
+	return deleteStatsBlockTime(blockTimeBucket, header.Height)
 }
 
 // RevertTransaction reverts a custodyfee transactions to the custodyfee bucket.
@@ -478,13 +500,41 @@ func (p *Plugin) validateCustodyFeePresent(tx modules.ConsensusTransaction, ctx 
 	if computationTime == 0 {
 		return errors.New("tx does not contain the required coin output for the custody fee, while coin inputs are spent")
 	}
-	if ctx.BlockTime < computationTime {
+	if tx.BlockTime < computationTime {
 		return errors.New("registered custody fee computation time cannot be in the future")
 	}
-	if diff := ctx.BlockTime - computationTime; diff > p.maxAllowedComputationTimeAdvance {
-		return fmt.Errorf(
-			"custody fee is paid, computated based on a timestamp too far in the past: %ds too late",
-			diff-p.maxAllowedComputationTimeAdvance)
+	if diff := tx.BlockTime - computationTime; diff > p.maxAllowedComputationTimeAdvance {
+		// try to go back in time and see if we can find a block with the matching timestamp,
+		// and that the block is within the allowed past-range
+		maxBlocks := p.maxFallbackBlocksInThePast
+		if maxBlocks > tx.BlockHeight {
+			maxBlocks = tx.BlockHeight
+		}
+		blockTimeBucket, err := bucket.Bucket(bucketBlockTime)
+		if err != nil {
+			return fmt.Errorf("corrupt Custody Fees plugin DB: %v", err)
+		}
+		var (
+			bTS                types.Timestamp
+			matchingBlockFound bool
+		)
+		for i := types.BlockHeight(1); i <= maxBlocks; i++ {
+			bTS, err = getStatsBlockTime(blockTimeBucket, tx.BlockHeight-i)
+			if err != nil {
+				return fmt.Errorf("corrupt Custody Fees plugin DB: failed to look up timestamp of known block %d: %v", tx.BlockHeight-i, err)
+			}
+			if bTS == computationTime {
+				matchingBlockFound = true
+				break
+			}
+		}
+		if !matchingBlockFound {
+			// no matching block found within the allowed range,
+			// returning an error due to invalid computation time
+			return fmt.Errorf(
+				"custody fee is paid, computated based on a timestamp too far in the past: %ds too late and no matching block found",
+				diff-p.maxAllowedComputationTimeAdvance)
+		}
 	}
 
 	// get coin out bucket,
@@ -499,7 +549,7 @@ func (p *Plugin) validateCustodyFeePresent(tx modules.ConsensusTransaction, ctx 
 	// ... look up each coin input in our plugin DB,
 	//     to check how much the fee will cost
 	for _, ci := range tx.CoinInputs {
-		info, err := getCoinOutputInfo(coBucket, ci.ParentID, ctx.BlockTime, false)
+		info, err := getCoinOutputInfo(coBucket, ci.ParentID, computationTime, false)
 		if err != nil {
 			return err
 		}
@@ -586,4 +636,75 @@ func getCoinOutputInfo(coBucket *bolt.Bucket, id types.CoinOutputID, chainTime t
 // Close unregisters the plugin from the consensus
 func (p *Plugin) Close() error {
 	return p.storage.Close()
+}
+
+func setStatsBlockTime(blockTimeBucket *bolt.Bucket, height types.BlockHeight, time types.Timestamp) error {
+	// validate blockheight
+	expectedHeight := types.BlockHeight(blockTimeBucket.Sequence())
+	if expectedHeight != height {
+		return fmt.Errorf("corrupt Custody Fees plugin DB: unexpected block height %d, expected %d", height, expectedHeight)
+	}
+	// store time using the height as ID
+	bHeight, err := rivbin.Marshal(height)
+	if err != nil {
+		return err
+	}
+	bTime, err := rivbin.Marshal(time)
+	if err != nil {
+		return err
+	}
+	err = blockTimeBucket.Put(bHeight, bTime)
+	if err != nil {
+		return err
+	}
+	// increase the bucket's sequence
+	_, err = blockTimeBucket.NextSequence()
+	return err
+}
+func getStatsBlockTime(blockTimeBucket *bolt.Bucket, height types.BlockHeight) (types.Timestamp, error) {
+	// get timestamp and return it
+	bHeight, err := rivbin.Marshal(height)
+	if err != nil {
+		return 0, err
+	}
+	b := blockTimeBucket.Get(bHeight)
+	if len(b) == 0 {
+		return 0, fmt.Errorf("no timestamp found for block %d", height)
+	}
+	var ts types.Timestamp
+	err = rivbin.Unmarshal(b, &ts)
+	return ts, err
+}
+func getCurrentBlockHeightAndTime(blockTimeBucket *bolt.Bucket) (types.BlockHeight, types.Timestamp, error) {
+	// get current blockheight
+	seq := blockTimeBucket.Sequence()
+	if seq == 0 {
+		return 0, 0, errors.New("bucket contains no block info")
+	}
+	height := types.BlockHeight(seq - 1)
+	ts, err := getStatsBlockTime(blockTimeBucket, height)
+	return height, ts, err
+
+}
+func deleteStatsBlockTime(blockTimeBucket *bolt.Bucket, height types.BlockHeight) error {
+	// validate the given height
+	seq := blockTimeBucket.Sequence()
+	if seq == 0 {
+		return errors.New("bucket contains no block info")
+	}
+	expectedHeight := types.BlockHeight(seq - 1)
+	if expectedHeight != height {
+		return fmt.Errorf("corrupt Custody Fees plugin DB: unexpected block height %d, expected %d", height, expectedHeight)
+	}
+	// delete time for height
+	bHeight, err := rivbin.Marshal(height)
+	if err != nil {
+		return err
+	}
+	err = blockTimeBucket.Delete(bHeight)
+	if err != nil {
+		return err
+	}
+	// decrease the bucket's sequence
+	return blockTimeBucket.SetSequence(uint64(height))
 }

@@ -110,7 +110,7 @@ func TestIntegrationPreEncryption(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	plugin := custodyfees.NewPlugin(1000)
+	plugin := custodyfees.NewPlugin(1000, 5)
 	// Create a second wallet using the same directory - make sure that if any
 	// files have been created, the wallet is still being treated as new.
 	w1, err := New(wt.cs, wt.tpool, plugin,

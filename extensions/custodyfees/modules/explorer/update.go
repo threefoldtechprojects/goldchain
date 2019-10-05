@@ -45,11 +45,11 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 
 		var coid types.CoinOutputID
 		revertedCoinInputIDs := map[types.CoinOutputID]types.Timestamp{}
+		appliedCoinInputIDs := map[types.CoinOutputID]types.Timestamp{}
 		var blocktime types.Timestamp
 
 		// Update cumulative stats for reverted blocks.
 		for _, block := range cc.RevertedBlocks {
-			blockheight--
 			blocktime = block.Timestamp
 			for idx := range block.MinerPayouts {
 				coid = block.MinerPayoutID(uint64(idx))
@@ -57,7 +57,6 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 				if err != nil {
 					return err
 				}
-				revertedCoinInputIDs[coid] = blocktime
 			}
 			for _, txn := range block.Transactions {
 				for _, ci := range txn.CoinInputs {
@@ -65,18 +64,18 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 					if err != nil {
 						return err
 					}
+					revertedCoinInputIDs[ci.ParentID] = blocktime
 				}
 				for idx := range txn.CoinOutputs {
 					coid = txn.CoinOutputID(uint64(idx))
 					err = dbDeleteUnspentCoinOutput(ucoBucket, coid)
-					revertedCoinInputIDs[coid] = blocktime
 				}
 			}
+			blockheight--
 		}
 
 		// Update cumulative stats for applied blocks.
 		for _, block := range cc.AppliedBlocks {
-			blockheight++
 			blocktime = block.Timestamp
 			for idx := range block.MinerPayouts {
 				coid = block.MinerPayoutID(uint64(idx))
@@ -91,12 +90,14 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 					if err != nil {
 						return err
 					}
+					appliedCoinInputIDs[ci.ParentID] = blocktime
 				}
 				for idx, co := range txn.CoinOutputs {
 					coid = txn.CoinOutputID(uint64(idx))
 					err = dbSetUnspentCoinOutput(ucoBucket, coid, co)
 				}
 			}
+			blockheight++
 		}
 
 		// set final blockheight
@@ -145,6 +146,18 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 				}
 				facts.SpentTokens = facts.SpentTokens.Sub(info.SpendableValue)
 				facts.PaidCustodyFees = facts.PaidCustodyFees.Sub(info.CustodyFee)
+			}
+			// add all aggregated spent/paid values
+			for coid, chainTime := range appliedCoinInputIDs {
+				info, err = view.GetCoinOutputInfo(coid, chainTime)
+				if err != nil {
+					return err
+				}
+				if info.FeeComputationTime != chainTime {
+					e.log.Printf("[WARN] unexpected fee computation time for applied spent coin output %s: %d != %d", coid.String(), info.FeeComputationTime, chainTime)
+				}
+				facts.SpentTokens = facts.SpentTokens.Add(info.SpendableValue)
+				facts.PaidCustodyFees = facts.PaidCustodyFees.Add(info.CustodyFee)
 			}
 			// recalculate the liquid, locked (both spendable) and fee debt
 			facts.SpendableTokens = types.Currency{}

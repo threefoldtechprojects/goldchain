@@ -55,7 +55,7 @@ func createWalletTester(name string) (*walletTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	plugin := custodyfees.NewPlugin(types.Timestamp(chainCts.BlockFrequency * 5))
+	plugin := custodyfees.NewPlugin(types.Timestamp(chainCts.BlockFrequency*5), 5)
 	w, err := New(cs, tp, plugin, filepath.Join(testdir, modules.WalletDir), bcInfo, chainCts, false)
 	if err != nil {
 		return nil, err
@@ -122,7 +122,7 @@ func createWalletTesterWithStubCS(name string, cs *consensusSetStub) (*walletTes
 	if err != nil {
 		return nil, err
 	}
-	plugin := custodyfees.NewPlugin(types.Timestamp(chainCts.BlockFrequency * 5))
+	plugin := custodyfees.NewPlugin(types.Timestamp(chainCts.BlockFrequency*5), 5)
 	w, err := New(cs, tp, plugin, filepath.Join(testdir, modules.WalletDir), bcInfo, chainCts, false)
 	if err != nil {
 		return nil, err
@@ -189,7 +189,7 @@ func createBlankWalletTester(name string) (*walletTester, error) {
 	if err != nil {
 		return nil, err
 	}
-	plugin := custodyfees.NewPlugin(types.Timestamp(chainCts.BlockFrequency * 5))
+	plugin := custodyfees.NewPlugin(types.Timestamp(chainCts.BlockFrequency*5), 5)
 	w, err := New(cs, tp, plugin, filepath.Join(testdir, modules.WalletDir), bcInfo, chainCts, false)
 	if err != nil {
 		return nil, err
@@ -247,7 +247,7 @@ func TestNilInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plugin := custodyfees.NewPlugin(types.Timestamp(chainCts.BlockFrequency * 5))
+	plugin := custodyfees.NewPlugin(types.Timestamp(chainCts.BlockFrequency*5), 5)
 
 	wdir := filepath.Join(testdir, modules.WalletDir)
 	_, err = New(cs, nil, plugin, wdir, bcInfo, chainCts, false)
@@ -328,7 +328,7 @@ func TestCloseWallet(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	plugin := custodyfees.NewPlugin(types.Timestamp(chainCts.BlockFrequency * 5))
+	plugin := custodyfees.NewPlugin(types.Timestamp(chainCts.BlockFrequency*5), 5)
 	wdir := filepath.Join(testdir, modules.WalletDir)
 	w, err := New(cs, tp, plugin, wdir, bcInfo, chainCts, false)
 	if err != nil {

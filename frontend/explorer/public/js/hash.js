@@ -295,14 +295,6 @@ function appendV1Transaction(infoBody, explorerTransaction, confirmed) {
 			}
 			var outputTable = createStatsTable()
 			f(ctx, outputTable, explorerTransaction, i, 'coins', coinoutputs);
-			if (explorerTransaction.coinoutputcustodyfees && explorerTransaction.coinoutputcustodyfees.length > 0 && explorerTransaction.coinoutputcustodyfees[i].age > 0) {
-				appendStat(outputTable, 'State', 'Unspent')
-				appendStat(outputTable, 'Age', readableDuration(explorerTransaction.coinoutputcustodyfees[i].age));
-				appendStat(outputTable, 'Custody Fee To Be Paid', readableCoins(explorerTransaction.coinoutputcustodyfees[i].fee));
-				appendStat(outputTable, 'Spendable Value', readableCoins(explorerTransaction.coinoutputcustodyfees[i].value));
-			} else {
-				appendStat(outputTable, 'State', 'Spent')
-			}
 			infoBody.appendChild(outputTable)
 		}
 	}
@@ -1277,8 +1269,8 @@ function addV1T128Output(_ctx, table, explorerTransaction, i, type, outputs) {
 }
 
 function addV128Condition(_ctx, table, conditiondata) {
-	doms = appendStat(table, 'Custody Fee Void Address', '800000000000000000000000000000000000000000000000000000000000000000af7bedde1fea');
-	appendStat(table, 'Custody Fee Computation Time', conditiondata.computationtime);
+	doms = appendStat(table, 'Custody Fee Void Address', '');
+	linkHash(doms[2], '800000000000000000000000000000000000000000000000000000000000000000af7bedde1fea');	
 	return false;
 }
 
@@ -1462,8 +1454,11 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 						var result = f(ctx, table, explorerHash.transactions[i], j, 'coins', coinoutputs);
 						var cvalue = 0;
 						if (confirmed) {
-							var info = explorerHash.transactions[i].coinoutputcustodyfees[i];
+							var info = explorerHash.transactions[i].coinoutputcustodyfees[j];
 							cvalue = info.spendablevalue;
+							if (info.iscustodyfee) {
+								cvalue = info.creationvalue;
+							}
 							if (result.locked) {
 								totalLockedValue += +cvalue;
 								cvalue = 0;
@@ -1540,9 +1535,13 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 	}
 
 	// add total confirmed coin balance for the address
-	appendStat(addressInfoTable, 'Confirmed Spendable Coins', readableCoins(totalCoinValue));
-	appendStat(addressInfoTable, 'Confirmed Cust. Fees To Pay', readableCoins(totalFeesToBePaidValue));
-	appendStat(addressInfoTable, 'Confirmed Cust Fees Paid', readableCoins(totalFeesPaidValue));
+	appendStat(addressInfoTable, hash.substring(0,2) != "80" ? 'Confirmed Spendable Coins' : 'Confirmed Custody Fees Paid', readableCoins(totalCoinValue));
+	if (totalFeesToBePaidValue !== 0) {
+		appendStat(addressInfoTable, 'Confirmed Cust. Fees To Pay', readableCoins(totalFeesToBePaidValue));
+	}
+	if (totalFeesPaidValue !== 0) {
+		appendStat(addressInfoTable, 'Confirmed Cust Fees Paid', readableCoins(totalFeesPaidValue));
+	}
 	if (totalUnconfirmedValue !== 0) {
 		appendStat(addressInfoTable, 'Unconfirmed Total Coins', readableCoins(totalUnconfirmedValue));
 	}
@@ -1562,6 +1561,10 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 		linkHeight(doms[2], lastSpendHeight);
 		doms = appendStat(spendTable, 'Transaction ID', '');
 		linkHash(doms[2], lastSpendTxID);
+	}
+
+	if (hash.substring(0,2) == "80") {
+		return // no block stake outputs are required for this address
 	}
 
 	// Compile a set of transactions that have siafund outputs featuring
@@ -1759,7 +1762,8 @@ function appendUnlockHashTransactionElements(domParent, hash, explorerHash, addr
 function appendUnlockHashTables(domParent, hash, explorerHash) {
 	// Create the main info table
 	var hashTitle = "Unknown Unlockhash Type";
-	var addressLabel = "Address"
+	var addressLabel = "Address";
+	var checkAuth = true;
 	switch(hash.substring(0,2)) {
 		case "00": hashTitle = "Free-for-all Wallet"; break;
 		case "01": hashTitle = "Wallet Addresss"; break;
@@ -1768,27 +1772,38 @@ function appendUnlockHashTables(domParent, hash, explorerHash) {
 			hashTitle = "Multisig Wallet Address";
 			addressLabel = "Multisig Address";
 			break;
+		case "80":
+			hashTitle = "Custody Fee Void";
+			addressLabel = "Void Address";
+			checkAuth = false;
+			break;
 	}
-	// auth authentication state
-	var authStatus = fetchCurrentAddressAuthStatus(hash);
-	var authStatusElement = null;
-	if (authStatus) {
-		authStatusElement = document.createElement('font');
-		authStatusElement.setAttribute('color', 'green');
-		authStatusElement.appendChild(document.createTextNode('(authorized)'));
+	if (checkAuth) {
+		// auth authentication state
+		var authStatus = fetchCurrentAddressAuthStatus(hash);
+		var authStatusElement = null;
+		if (authStatus) {
+			authStatusElement = document.createElement('font');
+			authStatusElement.setAttribute('color', 'green');
+			authStatusElement.appendChild(document.createTextNode('(authorized)'));
+		} else {
+			authStatusElement = document.createElement('font');
+			authStatusElement.setAttribute('color', 'red');
+			authStatusElement.appendChild(document.createTextNode('(not authorized)'));
+		}
+		var spanAuthStatusElement = document.createElement('span');
+		spanAuthStatusElement.appendChild(document.createTextNode(' '));
+		spanAuthStatusElement.appendChild(authStatusElement);
+		// add title (with auth state)
+		var titleHolder = document.createElement('h2');
+		titleHolder.appendChild(document.createTextNode(hashTitle));
+		titleHolder.appendChild(spanAuthStatusElement);
+		domParent.appendChild(titleHolder);
 	} else {
-		authStatusElement = document.createElement('font');
-		authStatusElement.setAttribute('color', 'red');
-		authStatusElement.appendChild(document.createTextNode('(not authorized)'));
+		var titleHolder = document.createElement('h2');
+		titleHolder.appendChild(document.createTextNode(hashTitle));
+		domParent.appendChild(titleHolder);
 	}
-	var spanAuthStatusElement = document.createElement('span');
-	spanAuthStatusElement.appendChild(document.createTextNode(' '));
-	spanAuthStatusElement.appendChild(authStatusElement);
-	// add title (with auth state)
-	var titleHolder = document.createElement('h2');
-	titleHolder.appendChild(document.createTextNode(hashTitle));
-	titleHolder.appendChild(spanAuthStatusElement);
-	domParent.appendChild(titleHolder);
 	// add rest of content
 	var addressInfoTable = createStatsTable();
 	domParent.appendChild(addressInfoTable)

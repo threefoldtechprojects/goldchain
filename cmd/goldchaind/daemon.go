@@ -12,6 +12,7 @@ import (
 
 	"github.com/nbh-digital/goldchain/pkg/config"
 
+	gcconsensus "github.com/nbh-digital/goldchain/modules/consensus"
 	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
 	"github.com/threefoldtech/rivine/extensions/minting"
 	mintingapi "github.com/threefoldtech/rivine/extensions/minting/api"
@@ -23,6 +24,7 @@ import (
 	cfplugin "github.com/nbh-digital/goldchain/extensions/custodyfees"
 	cfapi "github.com/nbh-digital/goldchain/extensions/custodyfees/api"
 	cfexplorer "github.com/nbh-digital/goldchain/extensions/custodyfees/modules/explorer"
+	cftypes "github.com/nbh-digital/goldchain/extensions/custodyfees/types"
 	goldchainmodules "github.com/nbh-digital/goldchain/modules"
 	"github.com/nbh-digital/goldchain/modules/wallet"
 	goldchainapi "github.com/nbh-digital/goldchain/pkg/api"
@@ -140,6 +142,11 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				}
 			}()
 
+			cs.SetTransactionValidators(setupNetworkCfg.Validators...)
+			for txVersion, validators := range setupNetworkCfg.MappedValidators {
+				cs.SetTransactionVersionMappedValidators(txVersion, validators...)
+			}
+
 			// create the minting extension plugin
 			mintingPlugin = minting.NewMintingPlugin(
 				setupNetworkCfg.GenesisMintCondition,
@@ -158,13 +165,20 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				setupNetworkCfg.GenesisAuthCondition,
 				goldchaintypes.TransactionVersionAuthAddressUpdate,
 				goldchaintypes.TransactionVersionAuthConditionUpdate,
-				nil, // no custom opts
+				&authcointx.PluginOpts{
+					UnlockHashFilter: func(uh types.UnlockHash) bool {
+						return uh.Type > types.UnlockTypeAtomicSwap && uh.Type < cftypes.UnlockTypeCustodyFee
+					},
+				},
 			)
 			// add the HTTP handlers for the auth coin tx extension as well
 			authcointxapi.RegisterConsensusAuthCoinHTTPHandlers(router, authCoinTxPlugin)
 
 			// register the custody fees plugin
-			custodyFeesPlugin = cfplugin.NewPlugin(setupNetworkCfg.CustodyFeeConfig.MaxAllowedComputationTimeAdvance)
+			custodyFeesPlugin = cfplugin.NewPlugin(
+				setupNetworkCfg.CustodyFeeConfig.MaxAllowedComputationTimeAdvance,
+				setupNetworkCfg.CustodyFeeConfig.MaxFallbackBlocksInThePast,
+			)
 			// add the HTTP handlers for the custody fees extension as well
 			cfapi.RegisterConsensusCustodyFeesHTTPHandlers(router, cs, custodyFeesPlugin)
 
@@ -379,10 +393,13 @@ type setupNetworkConfig struct {
 	GenesisMintCondition types.UnlockConditionProxy
 	GenesisAuthCondition types.UnlockConditionProxy
 	CustodyFeeConfig     custodyFeeConfig
+	Validators           []modules.TransactionValidationFunction
+	MappedValidators     map[types.TransactionVersion][]modules.TransactionValidationFunction
 }
 
 type custodyFeeConfig struct {
 	MaxAllowedComputationTimeAdvance types.Timestamp
+	MaxFallbackBlocksInThePast       types.BlockHeight
 }
 
 // setupNetwork injects the correct chain constants and genesis nodes based on the chosen network,
@@ -409,10 +426,13 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 			GenesisMintCondition: config.GetDevnetGenesisMintCondition(),
 			GenesisAuthCondition: config.GetDevnetGenesisAuthCoinCondition(),
 			// TODO: validate if this delay is acceptable,
-			//       or make it lower/higher if needed
+			//       or make it lower/higher if needed (validate both properties of this custody fee config)
 			CustodyFeeConfig: custodyFeeConfig{
-				MaxAllowedComputationTimeAdvance: types.Timestamp(constants.BlockFrequency) * 5,
+				MaxAllowedComputationTimeAdvance: types.Timestamp(constants.BlockFrequency) * 10,
+				MaxFallbackBlocksInThePast:       10,
 			},
+			Validators:       gcconsensus.GetDevnetTransactionValidators(),
+			MappedValidators: gcconsensus.GetDevnetTransactionVersionMappedValidators(),
 		}, nil
 
 	case config.NetworkNameTestnet:
@@ -430,10 +450,13 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 			GenesisMintCondition: config.GetTestnetGenesisMintCondition(),
 			GenesisAuthCondition: config.GetTestnetGenesisAuthCoinCondition(),
 			// TODO: validate if this delay is acceptable,
-			//       or make it lower/higher if needed
+			//       or make it lower/higher if needed (validate both properties of this custody fee config)
 			CustodyFeeConfig: custodyFeeConfig{
 				MaxAllowedComputationTimeAdvance: types.Timestamp(constants.BlockFrequency) * 5,
+				MaxFallbackBlocksInThePast:       5,
 			},
+			Validators:       gcconsensus.GetTestnetTransactionValidators(),
+			MappedValidators: gcconsensus.GetTestnetTransactionVersionMappedValidators(),
 		}, nil
 
 	default:

@@ -2,8 +2,8 @@ all: install
 
 daemonpkgs = ./cmd/goldchaind
 clientpkgs = ./cmd/goldchainc
-pkgs = $(daemonpkgs) $(clientpkgs) ./extensions/custodyfees  ./extensions/custodyfees/types ./pkg/config ./pkg/types ./pkg/api ./frontend/faucet ./modules/wallet
-testpkgs =  ./extensions/custodyfees ./modules/wallet
+pkgs = $(daemonpkgs) $(clientpkgs) ./extensions/custodyfees  ./extensions/custodyfees/types ./extensions/custodyfees/api ./extensions/custodyfees/client ./extensions/custodyfees/modules/explorer ./pkg/config ./pkg/types ./pkg/api ./pkg/client ./frontend/faucet ./modules ./modules/wallet ./modules/consensus
+testpkgs =  ./extensions/custodyfees ./extensions/custodyfees/types ./modules/wallet ./modules/consensus
 
 version = $(shell git describe --abbrev=0 || echo 'v0.1')
 commit = $(shell git rev-parse --short HEAD)

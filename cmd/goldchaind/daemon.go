@@ -167,7 +167,8 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				goldchaintypes.TransactionVersionAuthConditionUpdate,
 				&authcointx.PluginOpts{
 					UnlockHashFilter: func(uh types.UnlockHash) bool {
-						return uh.Type > types.UnlockTypeAtomicSwap && uh.Type < cftypes.UnlockTypeCustodyFee
+						return uh.Type != types.UnlockTypeNil &&
+							uh.Type != types.UnlockTypeAtomicSwap && uh.Type != cftypes.UnlockTypeCustodyFee
 					},
 				},
 			)
@@ -429,7 +430,7 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 			//       or make it lower/higher if needed (validate both properties of this custody fee config)
 			CustodyFeeConfig: custodyFeeConfig{
 				MaxAllowedComputationTimeAdvance: types.Timestamp(constants.BlockFrequency) * 10,
-				MaxFallbackBlocksInThePast:       10,
+				MaxFallbackBlocksInThePast:       5,
 			},
 			Validators:       gcconsensus.GetDevnetTransactionValidators(),
 			MappedValidators: gcconsensus.GetDevnetTransactionVersionMappedValidators(),
@@ -453,7 +454,7 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 			//       or make it lower/higher if needed (validate both properties of this custody fee config)
 			CustodyFeeConfig: custodyFeeConfig{
 				MaxAllowedComputationTimeAdvance: types.Timestamp(constants.BlockFrequency) * 5,
-				MaxFallbackBlocksInThePast:       5,
+				MaxFallbackBlocksInThePast:       3,
 			},
 			Validators:       gcconsensus.GetTestnetTransactionValidators(),
 			MappedValidators: gcconsensus.GetTestnetTransactionVersionMappedValidators(),

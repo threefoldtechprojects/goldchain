@@ -28,8 +28,6 @@ The links between NBH customers, customer threefold app id's and authorized addr
 
 [A Jumpscale schema with the required data](customer_addresses.jsschema)
  
- Questions:
- - Is bcdb production ready?
    
 
 ### Address Authorization
@@ -44,16 +42,15 @@ This is the logical flow. Technically it is more secure to put the process with 
 
  The blockchain is master and there are reports available through an explorer ran on NBH systems to update the Weight account system balances.
 
- This way no api's have to be exposed and the existing import functionality can be reused.
+ This way no api's have to be exposed.
 
  ![Blockchain to weight system](./WeightAccountUpdates.svg)
 
  The reports should contain all transactions and link them to the weight account sysstem customers
  
- In order to generate the report, a daterange is needed as input.
+In order to generate the report, a daterange is needed as input.
 
- Questions:
- -  what is he required format of the transaction reports?
+Since the existing import functionality can not be reused due to the way it works with acquisition and tracking, an Excel format can be propsed by us.
  
 ## Gold acquisition
 

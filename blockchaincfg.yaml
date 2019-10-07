@@ -22,6 +22,7 @@ generation:
     - frontend/explorer/public/js/{hash,main,index}.js
     - frontend/explorer/public/index.html
     - cmd/goldchaind/daemon.go
+    - cmd/goldchainc/{main,client,transactions}.go
 blockchain:
   name: goldchain
   longName: GoldChain

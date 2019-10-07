@@ -10,6 +10,8 @@ import (
 	"github.com/threefoldtech/rivine/modules"
 	rivinesync "github.com/threefoldtech/rivine/sync"
 	"github.com/threefoldtech/rivine/types"
+
+	gcmodules "github.com/nbh-digital/goldchain/modules"
 )
 
 func (w *Wallet) subscribeWallet() error {
@@ -189,7 +191,7 @@ func (w *Wallet) applyHistory(cc modules.ConsensusChange) {
 	for _, block := range cc.AppliedBlocks {
 		w.consensusSetHeight++
 		// Apply the miner payout transaction if applicable.
-		minerPT := modules.ProcessedTransaction{
+		minerPT := gcmodules.WalletProcessedTransaction{
 			Transaction:           types.Transaction{},
 			TransactionID:         types.TransactionID(block.ID()),
 			ConfirmationHeight:    w.consensusSetHeight,
@@ -201,14 +203,16 @@ func (w *Wallet) applyHistory(cc modules.ConsensusChange) {
 			if exists {
 				relevant = true
 			}
-			minerPT.Outputs = append(minerPT.Outputs, modules.ProcessedOutput{
+			outputID := types.OutputID(block.MinerPayoutID(uint64(i)))
+			minerPT.Outputs = append(minerPT.Outputs, gcmodules.WalletProcessedOutput{
 				FundType:       types.SpecifierMinerPayout,
 				MaturityHeight: w.consensusSetHeight + w.chainCts.MaturityDelay,
 				WalletAddress:  exists,
 				RelatedAddress: mp.UnlockHash,
 				Value:          mp.Value,
+				OutputID:       outputID,
 			})
-			w.historicOutputs[types.OutputID(block.MinerPayoutID(uint64(i)))] = historicOutput{
+			w.historicOutputs[outputID] = historicOutput{
 				UnlockHash: mp.UnlockHash,
 				Value:      mp.Value,
 			}
@@ -225,14 +229,15 @@ func (w *Wallet) applyHistory(cc modules.ConsensusChange) {
 
 		for ti, txn := range block.Transactions {
 			relevant := false
-			pt := modules.ProcessedTransaction{
+			pt := gcmodules.WalletProcessedTransaction{
 				Transaction:           txn,
 				TransactionID:         txn.ID(),
 				ConfirmationHeight:    w.consensusSetHeight,
 				ConfirmationTimestamp: block.Timestamp,
 			}
 			for _, sci := range txn.CoinInputs {
-				output := w.historicOutputs[types.OutputID(sci.ParentID)]
+				parentOutputID := types.OutputID(sci.ParentID)
+				output := w.historicOutputs[parentOutputID]
 				_, exists := w.keys[output.UnlockHash]
 				if exists {
 					relevant = true
@@ -244,18 +249,20 @@ func (w *Wallet) applyHistory(cc modules.ConsensusChange) {
 					// set "exists" to false since the output is not owned by the wallet.
 					exists = false
 				}
-				pt.Inputs = append(pt.Inputs, modules.ProcessedInput{
+				pt.Inputs = append(pt.Inputs, gcmodules.WalletProcessedInput{
 					FundType:       types.SpecifierCoinInput,
 					WalletAddress:  exists,
 					RelatedAddress: output.UnlockHash,
 					Value:          output.Value,
+					ParentOutputID: parentOutputID,
 				})
 			}
 			for i, sco := range txn.CoinOutputs {
+				outputID := types.OutputID(txn.CoinOutputID(uint64(i)))
 				_, exists := w.keys[sco.Condition.UnlockHash()]
 				if exists {
 					relevant = true
-				} else if _, exists = w.multiSigCoinOutputs[txn.CoinOutputID(uint64(i))]; exists {
+				} else if _, exists = w.multiSigCoinOutputs[types.CoinOutputID(outputID)]; exists {
 					// If the coin output is a relevant multisig output, it's ID will already
 					// be present in the multisigCoinOutputs map
 					relevant = true
@@ -263,20 +270,22 @@ func (w *Wallet) applyHistory(cc modules.ConsensusChange) {
 					exists = false
 				}
 				uh := sco.Condition.UnlockHash()
-				pt.Outputs = append(pt.Outputs, modules.ProcessedOutput{
+				pt.Outputs = append(pt.Outputs, gcmodules.WalletProcessedOutput{
 					FundType:       types.SpecifierCoinOutput,
 					MaturityHeight: w.consensusSetHeight,
 					WalletAddress:  exists,
 					RelatedAddress: uh,
 					Value:          sco.Value,
+					OutputID:       outputID,
 				})
-				w.historicOutputs[types.OutputID(txn.CoinOutputID(uint64(i)))] = historicOutput{
+				w.historicOutputs[outputID] = historicOutput{
 					UnlockHash: uh,
 					Value:      sco.Value,
 				}
 			}
 			for _, sfi := range txn.BlockStakeInputs {
-				output := w.historicOutputs[types.OutputID(sfi.ParentID)]
+				parentOutputID := types.OutputID(sfi.ParentID)
+				output := w.historicOutputs[parentOutputID]
 				_, exists := w.keys[output.UnlockHash]
 				if exists {
 					relevant = true
@@ -288,18 +297,20 @@ func (w *Wallet) applyHistory(cc modules.ConsensusChange) {
 					// set "exists" to false since the output is not owned by the wallet.
 					exists = false
 				}
-				pt.Inputs = append(pt.Inputs, modules.ProcessedInput{
+				pt.Inputs = append(pt.Inputs, gcmodules.WalletProcessedInput{
 					FundType:       types.SpecifierBlockStakeInput,
 					WalletAddress:  exists,
 					RelatedAddress: output.UnlockHash,
 					Value:          output.Value,
+					ParentOutputID: parentOutputID,
 				})
 			}
 			for i, sfo := range txn.BlockStakeOutputs {
+				outputID := types.OutputID(txn.BlockStakeOutputID(uint64(i)))
 				_, exists := w.keys[sfo.Condition.UnlockHash()]
 				if exists {
 					relevant = true
-				} else if _, exists = w.multiSigBlockStakeOutputs[txn.BlockStakeOutputID(uint64(i))]; exists {
+				} else if _, exists = w.multiSigBlockStakeOutputs[types.BlockStakeOutputID(outputID)]; exists {
 					// If the block stake output is a relevant multisig output, it's ID will already
 					// be present in the multisigBlockStakeOutputs map
 					relevant = true
@@ -307,18 +318,18 @@ func (w *Wallet) applyHistory(cc modules.ConsensusChange) {
 					exists = false
 				}
 				uh := sfo.Condition.UnlockHash()
-				pt.Outputs = append(pt.Outputs, modules.ProcessedOutput{
+				pt.Outputs = append(pt.Outputs, gcmodules.WalletProcessedOutput{
 					FundType:       types.SpecifierBlockStakeOutput,
 					MaturityHeight: w.consensusSetHeight,
 					WalletAddress:  exists,
 					RelatedAddress: uh,
 					Value:          sfo.Value,
+					OutputID:       outputID,
 				})
-				bsoid := txn.BlockStakeOutputID(uint64(i))
-				_, exists = w.blockstakeOutputs[bsoid]
+				_, exists = w.blockstakeOutputs[types.BlockStakeOutputID(outputID)]
 				if exists {
-					w.unspentblockstakeoutputs[bsoid] = types.UnspentBlockStakeOutput{
-						BlockStakeOutputID: bsoid,
+					w.unspentblockstakeoutputs[types.BlockStakeOutputID(outputID)] = types.UnspentBlockStakeOutput{
+						BlockStakeOutputID: types.BlockStakeOutputID(outputID),
 						Indexes: types.BlockStakeOutputIndexes{
 							BlockHeight:      blockheight,
 							TransactionIndex: uint64(ti),
@@ -328,7 +339,7 @@ func (w *Wallet) applyHistory(cc modules.ConsensusChange) {
 						Condition: sfo.Condition,
 					}
 				}
-				w.historicOutputs[types.OutputID(bsoid)] = historicOutput{
+				w.historicOutputs[outputID] = historicOutput{
 					UnlockHash: uh,
 					Value:      sfo.Value,
 				}
@@ -380,19 +391,20 @@ func (w *Wallet) ReceiveUpdatedUnconfirmedTransactions(txns []types.Transaction,
 		// To save on code complexity, relevancy is determined while building
 		// up the wallet transaction.
 		relevant := false
-		pt := modules.ProcessedTransaction{
+		pt := gcmodules.WalletProcessedTransaction{
 			Transaction:           txn,
 			TransactionID:         txn.ID(),
 			ConfirmationHeight:    types.BlockHeight(math.MaxUint64),
 			ConfirmationTimestamp: types.Timestamp(math.MaxUint64),
 		}
 		for _, sci := range txn.CoinInputs {
-			output := w.historicOutputs[types.OutputID(sci.ParentID)]
+			parentOutputID := types.OutputID(sci.ParentID)
+			output := w.historicOutputs[parentOutputID]
 			_, exists := w.keys[output.UnlockHash]
 			if exists {
 				relevant = true
 				// Add the outputid and height to spentoutputs map in wallet
-				w.spentOutputs[types.OutputID(sci.ParentID)] = pt.ConfirmationHeight
+				w.spentOutputs[parentOutputID] = pt.ConfirmationHeight
 			} else if _, exists = w.multiSigCoinOutputs[sci.ParentID]; exists {
 				// Since we know about every multisig output that is still open and releated,
 				// any relevant multisig input must have a parent ID present in the multisig
@@ -401,44 +413,48 @@ func (w *Wallet) ReceiveUpdatedUnconfirmedTransactions(txns []types.Transaction,
 				// set "exists" to false since the output is not owned by the wallet.
 				exists = false
 			}
-			pt.Inputs = append(pt.Inputs, modules.ProcessedInput{
+			pt.Inputs = append(pt.Inputs, gcmodules.WalletProcessedInput{
 				FundType:       types.SpecifierCoinInput,
 				WalletAddress:  exists,
 				RelatedAddress: output.UnlockHash,
 				Value:          output.Value,
+				ParentOutputID: parentOutputID,
 			})
 		}
 		for i, sco := range txn.CoinOutputs {
+			outputID := types.OutputID(txn.CoinOutputID(uint64(i)))
 			uh := sco.Condition.UnlockHash()
 			_, exists := w.keys[uh]
 			if exists {
 				relevant = true
-			} else if _, exists = w.multiSigCoinOutputs[txn.CoinOutputID(uint64(i))]; exists {
+			} else if _, exists = w.multiSigCoinOutputs[types.CoinOutputID(outputID)]; exists {
 				// If the coin output is a relevant multisig output, it's ID will already
 				// be present in the multisigCoinOutputs map
 				relevant = true
 				// set "exists" to false since the output is not owned by the wallet.
 				exists = false
 			}
-			pt.Outputs = append(pt.Outputs, modules.ProcessedOutput{
+			pt.Outputs = append(pt.Outputs, gcmodules.WalletProcessedOutput{
 				FundType:       types.SpecifierCoinOutput,
 				MaturityHeight: types.BlockHeight(math.MaxUint64),
 				WalletAddress:  exists,
 				RelatedAddress: uh,
 				Value:          sco.Value,
+				OutputID:       outputID,
 			})
-			w.historicOutputs[types.OutputID(txn.CoinOutputID(uint64(i)))] = historicOutput{
+			w.historicOutputs[outputID] = historicOutput{
 				UnlockHash: uh,
 				Value:      sco.Value,
 			}
 		}
 		for _, bsi := range txn.BlockStakeInputs {
-			output := w.historicOutputs[types.OutputID(bsi.ParentID)]
+			parentOutputID := types.OutputID(bsi.ParentID)
+			output := w.historicOutputs[parentOutputID]
 			_, exists := w.keys[output.UnlockHash]
 			if exists {
 				relevant = true
 				// Add the outputid and height to spentoutputs map in wallet
-				w.spentOutputs[types.OutputID(bsi.ParentID)] = pt.ConfirmationHeight
+				w.spentOutputs[parentOutputID] = pt.ConfirmationHeight
 			}
 		}
 		if relevant {

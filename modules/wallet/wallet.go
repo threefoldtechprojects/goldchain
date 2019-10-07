@@ -17,6 +17,7 @@ import (
 	"github.com/threefoldtech/rivine/types"
 
 	"github.com/nbh-digital/goldchain/extensions/custodyfees"
+	gcmodules "github.com/nbh-digital/goldchain/modules"
 )
 
 const (
@@ -107,9 +108,9 @@ type Wallet struct {
 	// historicOutputs is kept so that the values and addresses of transaction inputs can be
 	// determined. historicOutputs is never cleared, but in general should be
 	// small compared to the list of transactions.
-	processedTransactions            []modules.ProcessedTransaction
-	processedTransactionMap          map[types.TransactionID]*modules.ProcessedTransaction
-	unconfirmedProcessedTransactions []modules.ProcessedTransaction
+	processedTransactions            []gcmodules.WalletProcessedTransaction
+	processedTransactionMap          map[types.TransactionID]*gcmodules.WalletProcessedTransaction
+	unconfirmedProcessedTransactions []gcmodules.WalletProcessedTransaction
 
 	// TODO: Storing the whole set of historic outputs is expensive and
 	// unnecessary. There's a better way to do it.
@@ -160,7 +161,7 @@ func New(cs modules.ConsensusSet, tpool modules.TransactionPool, plugin *custody
 		multiSigCoinOutputs:       make(map[types.CoinOutputID]types.CoinOutput),
 		multiSigBlockStakeOutputs: make(map[types.BlockStakeOutputID]types.BlockStakeOutput),
 
-		processedTransactionMap: make(map[types.TransactionID]*modules.ProcessedTransaction),
+		processedTransactionMap: make(map[types.TransactionID]*gcmodules.WalletProcessedTransaction),
 
 		historicOutputs: make(map[types.OutputID]historicOutput),
 

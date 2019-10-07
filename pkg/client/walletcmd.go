@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"text/tabwriter"
+	"time"
 
 	"github.com/bgentry/speakeasy"
 	"github.com/spf13/cobra"
@@ -21,6 +22,7 @@ import (
 	clientpkg "github.com/threefoldtech/rivine/pkg/client"
 	"github.com/threefoldtech/rivine/types"
 
+	gcmodules "github.com/nbh-digital/goldchain/modules"
 	gcapi "github.com/nbh-digital/goldchain/pkg/api"
 )
 
@@ -826,14 +828,14 @@ BlockStakes:         %v BS
 // listTransactionsCmd lists all of the transactions related to the wallet,
 // providing a net flow of siacoins and siafunds for each.
 func (walletCmd *walletCmd) listTransactionsCmd() {
-	wtg := new(api.WalletTransactionsGET)
+	wtg := new(gcapi.WalletTransactionsGET)
 	err := walletCmd.cli.GetWithResponse("/wallet/transactions?startheight=0&endheight=10000000", wtg)
 	if err != nil {
 		cli.DieWithError("Could not fetch transaction history:", err)
 	}
 
-	multiSigWalletTxns := make(map[types.UnlockHash][]modules.ProcessedTransaction)
-	txns := append(wtg.ConfirmedTransactions, wtg.UnconfirmedTransactions...)
+	multiSigWalletTxns := make(map[types.UnlockHash][]gcmodules.ProcessedTransaction)
+	txns := append(wtg.ConfirmedTransactions, rivineProcessedTransactionsAsGoldchainProcessedTransactions(wtg.UnconfirmedTransactions)...)
 
 	if len(txns) == 0 {
 		fmt.Println("This wallet has no transaction related to it.")
@@ -850,7 +852,7 @@ func (walletCmd *walletCmd) listTransactionsCmd() {
 		for _, input := range txn.Inputs {
 			if input.FundType == types.SpecifierCoinInput && input.WalletAddress {
 				rootWalletOwned = true
-				outgoingSiacoins = outgoingSiacoins.Add(input.Value)
+				outgoingSiacoins = outgoingSiacoins.Add(spendableProcessedCoinInputValue(&input))
 			}
 			if input.FundType == types.SpecifierBlockStakeInput && input.WalletAddress {
 				rootWalletOwned = true
@@ -867,11 +869,11 @@ func (walletCmd *walletCmd) listTransactionsCmd() {
 		for _, output := range txn.Outputs {
 			if output.FundType == types.SpecifierMinerPayout {
 				rootWalletOwned = true
-				incomingSiacoins = incomingSiacoins.Add(output.Value)
+				incomingSiacoins = incomingSiacoins.Add(spendableProcessedCoinOutputValue(&output))
 			}
 			if output.FundType == types.SpecifierCoinOutput && output.WalletAddress {
 				rootWalletOwned = true
-				incomingSiacoins = incomingSiacoins.Add(output.Value)
+				incomingSiacoins = incomingSiacoins.Add(spendableProcessedCoinOutputValue(&output))
 			}
 			if output.FundType == types.SpecifierBlockStakeOutput && output.WalletAddress {
 				rootWalletOwned = true
@@ -923,7 +925,7 @@ func (walletCmd *walletCmd) listTransactionsCmd() {
 				var outgoingBlockStakes types.Currency
 				for _, input := range txn.Inputs {
 					if input.FundType == types.SpecifierCoinInput && input.RelatedAddress.Cmp(uh) == 0 {
-						outgoingSiacoins = outgoingSiacoins.Add(input.Value)
+						outgoingSiacoins = outgoingSiacoins.Add(input.CoinInfo.SpendableValue)
 					}
 					if input.FundType == types.SpecifierBlockStakeInput && input.RelatedAddress.Cmp(uh) == 0 {
 						outgoingBlockStakes = outgoingBlockStakes.Add(input.Value)
@@ -935,10 +937,10 @@ func (walletCmd *walletCmd) listTransactionsCmd() {
 				var incomingBlockStakes types.Currency
 				for _, output := range txn.Outputs {
 					if output.FundType == types.SpecifierMinerPayout {
-						incomingSiacoins = incomingSiacoins.Add(output.Value)
+						incomingSiacoins = incomingSiacoins.Add(output.CoinInfo.SpendableValue)
 					}
 					if output.FundType == types.SpecifierCoinOutput && output.RelatedAddress.Cmp(uh) == 0 {
-						incomingSiacoins = incomingSiacoins.Add(output.Value)
+						incomingSiacoins = incomingSiacoins.Add(output.CoinInfo.SpendableValue)
 					}
 					if output.FundType == types.SpecifierBlockStakeOutput && output.RelatedAddress.Cmp(uh) == 0 {
 						incomingBlockStakes = incomingBlockStakes.Add(output.Value)
@@ -965,6 +967,59 @@ func (walletCmd *walletCmd) listTransactionsCmd() {
 			}
 		}
 	}
+}
+
+func spendableProcessedCoinInputValue(pci *gcmodules.ProcessedInput) types.Currency {
+	if pci.CoinInfo != nil && !pci.CoinInfo.SpendableValue.IsZero() {
+		return pci.CoinInfo.SpendableValue
+	}
+	return pci.Value
+}
+
+func spendableProcessedCoinOutputValue(pco *gcmodules.ProcessedOutput) types.Currency {
+	if pco.CoinInfo != nil && !pco.CoinInfo.SpendableValue.IsZero() {
+		return pco.CoinInfo.SpendableValue
+	}
+	return pco.Value
+}
+
+func rivineProcessedTransactionsAsGoldchainProcessedTransactions(pts []modules.ProcessedTransaction) []gcmodules.ProcessedTransaction {
+	epts := make([]gcmodules.ProcessedTransaction, 0, len(pts))
+	var (
+		pi modules.ProcessedInput
+		po modules.ProcessedOutput
+	)
+	for _, pt := range pts {
+		ept := gcmodules.ProcessedTransaction{
+			Transaction:           pt.Transaction,
+			TransactionID:         pt.TransactionID,
+			ConfirmationHeight:    pt.ConfirmationHeight,
+			ConfirmationTimestamp: pt.ConfirmationTimestamp,
+		}
+		ept.Inputs = make([]gcmodules.ProcessedInput, 0, len(pt.Inputs))
+		for idx := range pt.Transaction.CoinInputs {
+			pi = pt.Inputs[idx]
+			ept.Inputs = append(ept.Inputs, gcmodules.ProcessedInput{
+				FundType:       pi.FundType,
+				WalletAddress:  pi.WalletAddress,
+				RelatedAddress: pi.RelatedAddress,
+				Value:          pi.Value,
+			})
+		}
+		ept.Outputs = make([]gcmodules.ProcessedOutput, 0, len(pt.Outputs))
+		for idx := range pt.Transaction.CoinOutputs {
+			po = pt.Outputs[idx]
+			ept.Outputs = append(ept.Outputs, gcmodules.ProcessedOutput{
+				FundType:       po.FundType,
+				MaturityHeight: po.MaturityHeight,
+				WalletAddress:  po.WalletAddress,
+				RelatedAddress: po.RelatedAddress,
+				Value:          po.Value,
+			})
+		}
+		epts = append(epts, ept)
+	}
+	return epts
 }
 
 // unlockCmd unlocks a saved wallet
@@ -1008,7 +1063,7 @@ func (walletCmd *walletCmd) listUnlockedCmd(_ *cobra.Command, args []string) {
 		}
 	}
 
-	var resp api.WalletListUnlockedGET
+	var resp gcapi.WalletListUnlockedGET
 	err = walletCmd.cli.GetWithResponse("/wallet/unlocked", &resp)
 	if err != nil {
 		cli.DieWithError("failed to get unlocked outputs: ", err)
@@ -1051,7 +1106,10 @@ func (walletCmd *walletCmd) listUnlockedCmd(_ *cobra.Command, args []string) {
 		fmt.Println("Unlocked unspent coin outputs:")
 		for _, uco := range resp.UnlockedCoinOutputs {
 			fmt.Println("ID:", uco.ID)
-			fmt.Println("Value:", currencyConvertor.ToCoinStringWithUnit(uco.Output.Value))
+			fmt.Println("Creation Value:", currencyConvertor.ToCoinStringWithUnit(uco.CoinInfo.CreationValue))
+			fmt.Println("Current Age:", time.Second*time.Duration(uco.CoinInfo.FeeComputationTime-uco.CoinInfo.CreationTime))
+			fmt.Println("Spendable Value:", currencyConvertor.ToCoinStringWithUnit(uco.CoinInfo.SpendableValue))
+			fmt.Println("Custody Fee To Be Paid:", currencyConvertor.ToCoinStringWithUnit(uco.CoinInfo.CustodyFee))
 			fmt.Println("Condition:")
 			jsonOutput.Encode(uco.Output)
 			fmt.Println()
@@ -1085,7 +1143,7 @@ func (walletCmd *walletCmd) listLockedCmd(_ *cobra.Command, args []string) {
 		}
 	}
 
-	var resp api.WalletListLockedGET
+	var resp gcapi.WalletListLockedGET
 	err = walletCmd.cli.GetWithResponse("/wallet/locked", &resp)
 	if err != nil {
 		cli.DieWithError("Could not get locked outputs: ", err)
@@ -1128,7 +1186,10 @@ func (walletCmd *walletCmd) listLockedCmd(_ *cobra.Command, args []string) {
 		fmt.Println("Locked unspent coin outputs:")
 		for _, uco := range resp.LockedCoinOutputs {
 			fmt.Println("ID:", uco.ID)
-			fmt.Println("Value:", currencyConvertor.ToCoinStringWithUnit(uco.Output.Value))
+			fmt.Println("Creation Value:", currencyConvertor.ToCoinStringWithUnit(uco.CoinInfo.CreationValue))
+			fmt.Println("Current Age:", time.Second*time.Duration(uco.CoinInfo.FeeComputationTime-uco.CoinInfo.CreationTime))
+			fmt.Println("Spendable Value:", currencyConvertor.ToCoinStringWithUnit(uco.CoinInfo.SpendableValue))
+			fmt.Println("Custody Fee To Be Paid:", currencyConvertor.ToCoinStringWithUnit(uco.CoinInfo.CustodyFee))
 			fmt.Println("Condition:")
 			jsonOutput.Encode(uco.Output)
 			fmt.Println()

@@ -5,6 +5,9 @@ import (
 
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/types"
+
+	"github.com/nbh-digital/goldchain/extensions/custodyfees"
+	gcmodules "github.com/nbh-digital/goldchain/modules"
 )
 
 var (
@@ -38,7 +41,7 @@ func (w *Wallet) AddressTransactions(uh types.UnlockHash) (pts []modules.Process
 			}
 		}
 		if relevant {
-			pts = append(pts, pt)
+			pts = append(pts, pt.AsRivineProcessedTransaction())
 		}
 	}
 	return
@@ -72,7 +75,7 @@ func (w *Wallet) AddressUnconfirmedTransactions(uh types.UnlockHash) (pts []modu
 			}
 		}
 		if relevant {
-			pts = append(pts, pt)
+			pts = append(pts, pt.AsRivineProcessedTransaction())
 		}
 	}
 	return
@@ -90,7 +93,7 @@ func (w *Wallet) Transaction(txid types.TransactionID) (modules.ProcessedTransac
 	if !exists {
 		return modules.ProcessedTransaction{}, exists, nil
 	}
-	return *pt, exists, nil
+	return pt.AsRivineProcessedTransaction(), exists, nil
 }
 
 // Transactions returns all transactions relevant to the wallet that were
@@ -116,10 +119,46 @@ func (w *Wallet) Transactions(startHeight, endHeight types.BlockHeight) (pts []m
 			break
 		}
 		if pt.ConfirmationHeight >= startHeight {
-			pts = append(pts, pt)
+			pts = append(pts, pt.AsRivineProcessedTransaction())
 		}
 	}
 	return pts, nil
+}
+
+// TransactionsWithCustodyInfo returns all transactions relevant to the wallet that were
+// confirmed in the range [startHeight, endHeight].
+func (w *Wallet) TransactionsWithCustodyInfo(startHeight, endHeight types.BlockHeight) (pts []gcmodules.ProcessedTransaction, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	if !w.unlocked {
+		err = modules.ErrLockedWallet
+		return
+	}
+
+	if startHeight > w.consensusSetHeight || startHeight > endHeight {
+		return nil, errOutOfBounds
+	}
+	if len(w.processedTransactions) == 0 {
+		return nil, nil
+	}
+
+	err = w.cfplugin.ViewCoinOutputInfo(func(view custodyfees.CoinOutputInfoView) error {
+		for _, pt := range w.processedTransactions {
+			if pt.ConfirmationHeight > endHeight {
+				break
+			}
+			if pt.ConfirmationHeight >= startHeight {
+				ept, err := pt.AsProcessedTransaction(view)
+				if err != nil {
+					return err
+				}
+				pts = append(pts, ept)
+			}
+		}
+		return nil
+	})
+	return pts, err
 }
 
 // BlockStakeStats returns the blockstake statistical information of this wallet
@@ -186,7 +225,11 @@ func (w *Wallet) UnconfirmedTransactions() ([]modules.ProcessedTransaction, erro
 	if !w.unlocked {
 		return nil, modules.ErrLockedWallet
 	}
-	return w.unconfirmedProcessedTransactions, nil
+	uts := make([]modules.ProcessedTransaction, 0, len(w.unconfirmedProcessedTransactions))
+	for _, upt := range w.unconfirmedProcessedTransactions {
+		uts = append(uts, upt.AsRivineProcessedTransaction())
+	}
+	return uts, nil
 }
 
 // CreateRawTransaction with the given inputs and outputs

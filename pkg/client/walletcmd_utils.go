@@ -1,8 +1,8 @@
 package client
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/threefoldtech/rivine/types"

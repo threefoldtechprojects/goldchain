@@ -42,13 +42,13 @@ type (
 	// the parent block. This information is provided for programs that may not
 	// be complex enough to compute the extra information on their own.
 	ExplorerTransaction struct {
-		ID             rtypes.TransactionID `json:"id"`
-		Height         rtypes.BlockHeight   `json:"height"`
-		Parent         rtypes.BlockID       `json:"parent"`
-		RawTransaction rtypes.Transaction   `json:"rawtransaction"`
-		Timestamp      rtypes.Timestamp     `json:"timestamp"`
-		Order          int                  `json:"order"`
-		MinerPayouts   []rtypes.MinerPayout `json:"minerpayouts"`
+		ID             rtypes.TransactionID  `json:"id"`
+		Height         rtypes.BlockHeight    `json:"height"`
+		Parent         rtypes.BlockID        `json:"parent"`
+		RawTransaction rtypes.Transaction    `json:"rawtransaction"`
+		Timestamp      rtypes.Timestamp      `json:"timestamp"`
+		Order          int                   `json:"order"`
+		MinerPayouts   []ExplorerMinerPayout `json:"minerpayouts"`
 
 		CoinInputOutputs             []ExplorerCoinOutput            `json:"coininputoutputs"` // the outputs being spent
 		CoinOutputIDs                []rtypes.CoinOutputID           `json:"coinoutputids"`
@@ -59,6 +59,12 @@ type (
 		BlockStakeOutputUnlockHashes []rtypes.UnlockHash             `json:"blockstakeunlockhashes"`
 
 		Unconfirmed bool `json:"unconfirmed"`
+	}
+
+	// ExplorerMinerPayout adds extra information about the MinerPayout
+	ExplorerMinerPayout struct {
+		RawMinerPayout rtypes.MinerPayout  `json:"rawminerpayout"`
+		MinerPayoutID  rtypes.CoinOutputID `json:"minerpayoutid"`
 	}
 
 	// CustodyFeeInfo contains the fee for a certain coin output as well as the age at the time of fee calculation.
@@ -482,8 +488,15 @@ func buildExplorerTransactionWithMappedCoinOutputs(explorer modules.Explorer, pl
 	et.Height = height
 	et.Timestamp = block.Timestamp
 	et.Parent = block.ParentID
-	et.MinerPayouts = block.MinerPayouts
 	et.RawTransaction = txn
+
+	et.MinerPayouts = make([]ExplorerMinerPayout, 0, len(block.MinerPayouts))
+	for idx, mp := range block.MinerPayouts {
+		et.MinerPayouts = append(et.MinerPayouts, ExplorerMinerPayout{
+			RawMinerPayout: mp,
+			MinerPayoutID:  block.MinerPayoutID(uint64(idx)),
+		})
+	}
 
 	for k, tx := range block.Transactions {
 		if et.ID == tx.ID() {

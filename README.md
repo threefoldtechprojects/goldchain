@@ -1,4 +1,4 @@
-# goldchain [![Build Status](https://travis-ci.com/nbh-digital/goldchain.svg?branch=master)](https://travis-ci.com/nbh-digital/goldchain) [![GoDoc](https://godoc.org/github.com/nbh-digital/goldchain?status.svg)](https://godoc.org/github.com/nbh-digital/goldchain) [![Go Report Card](https://goreportcard.com/badge/github.com/nbh-digital/goldchain)](https://goreportcard.com/report/github.com/nbh-digital/goldchain)
+# goldchain [![Build Status](https://travis-ci.org/nbh-digital/goldchain.svg?branch=master)](https://travis-ci.org/nbh-digital/goldchain) [![GoDoc](https://godoc.org/github.com/nbh-digital/goldchain?status.svg)](https://godoc.org/github.com/nbh-digital/goldchain) [![Go Report Card](https://goreportcard.com/badge/github.com/nbh-digital/goldchain)](https://goreportcard.com/report/github.com/nbh-digital/goldchain)
 
 > :warning: **WARNING**: software is still in development. It is not yet meant for use in production.
 > Standard network is disabled at the moment.

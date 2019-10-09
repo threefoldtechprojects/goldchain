@@ -48,6 +48,7 @@ type (
 		RawTransaction rtypes.Transaction   `json:"rawtransaction"`
 		Timestamp      rtypes.Timestamp     `json:"timestamp"`
 		Order          int                  `json:"order"`
+		MinerPayouts   []rtypes.MinerPayout `json:"minerpayouts"`
 
 		CoinInputOutputs             []ExplorerCoinOutput            `json:"coininputoutputs"` // the outputs being spent
 		CoinOutputIDs                []rtypes.CoinOutputID           `json:"coinoutputids"`
@@ -479,9 +480,10 @@ func buildExplorerTransactionWithMappedCoinOutputs(explorer modules.Explorer, pl
 	// Get the header information for the transaction.
 	et.ID = txn.ID()
 	et.Height = height
-	et.Parent = block.ParentID
-	et.RawTransaction = txn
 	et.Timestamp = block.Timestamp
+	et.Parent = block.ParentID
+	et.MinerPayouts = block.MinerPayouts
+	et.RawTransaction = txn
 
 	for k, tx := range block.Transactions {
 		if et.ID == tx.ID() {

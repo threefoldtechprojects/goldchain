@@ -12,6 +12,7 @@ import (
 
 	"github.com/nbh-digital/goldchain/pkg/config"
 
+	gcconsensus "github.com/nbh-digital/goldchain/modules/consensus"
 	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
 	"github.com/threefoldtech/rivine/extensions/minting"
 	mintingapi "github.com/threefoldtech/rivine/extensions/minting/api"
@@ -20,6 +21,14 @@ import (
 	"github.com/threefoldtech/rivine/extensions/authcointx"
 	authcointxapi "github.com/threefoldtech/rivine/extensions/authcointx/api"
 
+	cfplugin "github.com/nbh-digital/goldchain/extensions/custodyfees"
+	cfapi "github.com/nbh-digital/goldchain/extensions/custodyfees/api"
+	cfexplorer "github.com/nbh-digital/goldchain/extensions/custodyfees/modules/explorer"
+	cftypes "github.com/nbh-digital/goldchain/extensions/custodyfees/types"
+	goldchainmodules "github.com/nbh-digital/goldchain/modules"
+	"github.com/nbh-digital/goldchain/modules/wallet"
+	goldchainapi "github.com/nbh-digital/goldchain/pkg/api"
+
 	"github.com/julienschmidt/httprouter"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/modules/blockcreator"
@@ -27,7 +36,6 @@ import (
 	"github.com/threefoldtech/rivine/modules/explorer"
 	"github.com/threefoldtech/rivine/modules/gateway"
 	"github.com/threefoldtech/rivine/modules/transactionpool"
-	"github.com/threefoldtech/rivine/modules/wallet"
 	rivineapi "github.com/threefoldtech/rivine/pkg/api"
 	"github.com/threefoldtech/rivine/pkg/daemon"
 )
@@ -48,7 +56,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 		modulesToLoad = moduleIdentifiers.Len()
 	)
 	printModuleIsLoading := func(name string) {
-		fmt.Printf("Loading %s (%d/%d)...\r\n", name, i, modulesToLoad)
+		fmt.Printf("Loading %s (%d/%d)...\r\n", name, i+1, modulesToLoad)
 		i++
 	}
 
@@ -88,6 +96,46 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			return
 		}
 
+		fmt.Println("Setting up root HTTP API handler...")
+
+		// handle all our endpoints over a router,
+		// which requires a user agent should one be configured
+		srv.Handle("/", rivineapi.RequireUserAgentHandler(router, cfg.RequiredUserAgent))
+
+		var cs modules.ConsensusSet
+
+		// register our special daemon HTTP handlers
+		router.GET("/daemon/constants", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+			var pluginNames []string
+			if cs != nil {
+				pluginNames = cs.LoadedPlugins()
+			}
+			constants := modules.NewDaemonConstants(cfg.BlockchainInfo, networkCfg.Constants, pluginNames)
+			rivineapi.WriteJSON(w, constants)
+		})
+		router.GET("/daemon/version", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+			rivineapi.WriteJSON(w, daemon.Version{
+				ChainVersion:    cfg.BlockchainInfo.ChainVersion,
+				ProtocolVersion: cfg.BlockchainInfo.ProtocolVersion,
+			})
+		})
+		router.POST("/daemon/stop", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+			// can't write after we stop the server, so lie a bit.
+			rivineapi.WriteSuccess(w)
+
+			// need to flush the response before shutting down the server
+			f, ok := w.(http.Flusher)
+			if !ok {
+				panic("Server does not support flushing")
+			}
+			f.Flush()
+
+			if err := srv.Close(); err != nil {
+				servErrs <- err
+			}
+			cancel()
+		})
+
 		// Initialize the Rivine modules
 		var g modules.Gateway
 		if moduleIdentifiers.Contains(daemon.GatewayModule.Identifier()) {
@@ -110,9 +158,9 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			}()
 		}
 
-		var cs modules.ConsensusSet
 		var mintingPlugin *minting.Plugin
 		var authCoinTxPlugin *authcointx.Plugin
+		var custodyFeesPlugin *cfplugin.Plugin
 
 		if moduleIdentifiers.Contains(daemon.ConsensusSetModule.Identifier()) {
 			printModuleIsLoading("consensus set")
@@ -133,6 +181,11 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				}
 			}()
 
+			cs.SetTransactionValidators(setupNetworkCfg.Validators...)
+			for txVersion, validators := range setupNetworkCfg.MappedValidators {
+				cs.SetTransactionVersionMappedValidators(txVersion, validators...)
+			}
+
 			// create the minting extension plugin
 			mintingPlugin = minting.NewMintingPlugin(
 				setupNetworkCfg.GenesisMintCondition,
@@ -151,10 +204,23 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				setupNetworkCfg.GenesisAuthCondition,
 				goldchaintypes.TransactionVersionAuthAddressUpdate,
 				goldchaintypes.TransactionVersionAuthConditionUpdate,
-				nil, // no custom opts
+				&authcointx.PluginOpts{
+					UnlockHashFilter: func(uh types.UnlockHash) bool {
+						return uh.Type != types.UnlockTypeNil &&
+							uh.Type != types.UnlockTypeAtomicSwap && uh.Type != cftypes.UnlockTypeCustodyFee
+					},
+				},
 			)
 			// add the HTTP handlers for the auth coin tx extension as well
 			authcointxapi.RegisterConsensusAuthCoinHTTPHandlers(router, authCoinTxPlugin)
+
+			// register the custody fees plugin
+			custodyFeesPlugin = cfplugin.NewPlugin(
+				setupNetworkCfg.CustodyFeeConfig.MaxAllowedComputationTimeAdvance,
+				setupNetworkCfg.CustodyFeeConfig.MaxFallbackBlocksInThePast,
+			)
+			// add the HTTP handlers for the custody fees extension as well
+			cfapi.RegisterConsensusCustodyFeesHTTPHandlers(router, cs, custodyFeesPlugin)
 
 			// register the minting extension plugin
 			err = cs.RegisterPlugin(ctx, "minting", mintingPlugin)
@@ -175,6 +241,18 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				err = authCoinTxPlugin.Close() //make sure any resources are released
 				if err != nil {
 					fmt.Println("Error during closing of the authCoinTxPlugin :", err)
+				}
+				cancel()
+				return
+			}
+
+			// register the CustodyFees extension plugin
+			err = cs.RegisterPlugin(ctx, "custodyfees", custodyFeesPlugin)
+			if err != nil {
+				servErrs <- fmt.Errorf("failed to register the custodyfees extension: %v", err)
+				err = custodyFeesPlugin.Close() //make sure any resources are released
+				if err != nil {
+					fmt.Println("Error during closing of the custodyFeesPlugin :", err)
 				}
 				cancel()
 				return
@@ -201,10 +279,10 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				}
 			}()
 		}
-		var w modules.Wallet
+		var w goldchainmodules.Wallet
 		if moduleIdentifiers.Contains(daemon.WalletModule.Identifier()) {
 			printModuleIsLoading("wallet")
-			w, err = wallet.New(cs, tpool,
+			w, err = wallet.New(cs, tpool, custodyFeesPlugin,
 				filepath.Join(cfg.RootPersistentDir, modules.WalletDir),
 				cfg.BlockchainInfo, networkCfg.Constants, cfg.VerboseLogging)
 			if err != nil {
@@ -212,7 +290,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				cancel()
 				return
 			}
-			rivineapi.RegisterWalletHTTPHandlers(router, w, cfg.APIPassword)
+			goldchainapi.RegisterWalletHTTPHandlers(router, w, cfg.APIPassword)
 			defer func() {
 				fmt.Println("Closing wallet...")
 				err := w.Close()
@@ -253,7 +331,7 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				cancel()
 				return
 			}
-			rivineapi.RegisterExplorerHTTPHandlers(router, cs, e, tpool)
+			goldchainapi.RegisterExplorerHTTPHandlers(router, cs, e, tpool, custodyFeesPlugin)
 			defer func() {
 				fmt.Println("Closing explorer...")
 				err := e.Close()
@@ -262,43 +340,28 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				}
 			}()
 
+			// add also the custody fee explorer
+			cfe, err := cfexplorer.New(cs, custodyFeesPlugin,
+				filepath.Join(cfg.RootPersistentDir, modules.ExplorerDir, "custodyfees"),
+				cfg.BlockchainInfo, networkCfg.Constants, cfg.VerboseLogging)
+			if err != nil {
+				servErrs <- err
+				cancel()
+				return
+			}
+			defer func() {
+				fmt.Println("Closing explorer...")
+				err := cfe.Close()
+				if err != nil {
+					fmt.Println("Error during custody fee explorer shutdown:", err)
+				}
+			}()
+
 			mintingapi.RegisterExplorerMintingHTTPHandlers(router, mintingPlugin)
 			authcointxapi.RegisterExplorerAuthCoinHTTPHandlers(router, authCoinTxPlugin)
+			cfapi.RegisterExplorerCustodyFeesHTTPHandlers(router, cs, custodyFeesPlugin, cfe)
+
 		}
-
-		fmt.Println("Setting up root HTTP API handler...")
-
-		// register our special daemon HTTP handlers
-		router.GET("/daemon/constants", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-			constants := modules.NewDaemonConstants(cfg.BlockchainInfo, networkCfg.Constants)
-			rivineapi.WriteJSON(w, constants)
-		})
-		router.GET("/daemon/version", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-			rivineapi.WriteJSON(w, daemon.Version{
-				ChainVersion:    cfg.BlockchainInfo.ChainVersion,
-				ProtocolVersion: cfg.BlockchainInfo.ProtocolVersion,
-			})
-		})
-		router.POST("/daemon/stop", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-			// can't write after we stop the server, so lie a bit.
-			rivineapi.WriteSuccess(w)
-
-			// need to flush the response before shutting down the server
-			f, ok := w.(http.Flusher)
-			if !ok {
-				panic("Server does not support flushing")
-			}
-			f.Flush()
-
-			if err := srv.Close(); err != nil {
-				servErrs <- err
-			}
-			cancel()
-		})
-
-		// handle all our endpoints over a router,
-		// which requires a user agent should one be configured
-		srv.Handle("/", rivineapi.RequireUserAgentHandler(router, cfg.RequiredUserAgent))
 
 		if cs != nil {
 			cs.Start()
@@ -335,6 +398,14 @@ type setupNetworkConfig struct {
 	NetworkConfig        daemon.NetworkConfig
 	GenesisMintCondition types.UnlockConditionProxy
 	GenesisAuthCondition types.UnlockConditionProxy
+	CustodyFeeConfig     custodyFeeConfig
+	Validators           []modules.TransactionValidationFunction
+	MappedValidators     map[types.TransactionVersion][]modules.TransactionValidationFunction
+}
+
+type custodyFeeConfig struct {
+	MaxAllowedComputationTimeAdvance types.Timestamp
+	MaxFallbackBlocksInThePast       types.BlockHeight
 }
 
 // setupNetwork injects the correct chain constants and genesis nodes based on the chosen network,
@@ -360,6 +431,14 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 			},
 			GenesisMintCondition: config.GetDevnetGenesisMintCondition(),
 			GenesisAuthCondition: config.GetDevnetGenesisAuthCoinCondition(),
+			// TODO: validate if this delay is acceptable,
+			//       or make it lower/higher if needed (validate both properties of this custody fee config)
+			CustodyFeeConfig: custodyFeeConfig{
+				MaxAllowedComputationTimeAdvance: types.Timestamp(constants.BlockFrequency) * 10,
+				MaxFallbackBlocksInThePast:       5,
+			},
+			Validators:       gcconsensus.GetDevnetTransactionValidators(),
+			MappedValidators: gcconsensus.GetDevnetTransactionVersionMappedValidators(),
 		}, nil
 
 	case config.NetworkNameTestnet:
@@ -376,6 +455,14 @@ func setupNetwork(cfg ExtendedDaemonConfig) (setupNetworkConfig, error) {
 			},
 			GenesisMintCondition: config.GetTestnetGenesisMintCondition(),
 			GenesisAuthCondition: config.GetTestnetGenesisAuthCoinCondition(),
+			// TODO: validate if this delay is acceptable,
+			//       or make it lower/higher if needed (validate both properties of this custody fee config)
+			CustodyFeeConfig: custodyFeeConfig{
+				MaxAllowedComputationTimeAdvance: types.Timestamp(constants.BlockFrequency) * 5,
+				MaxFallbackBlocksInThePast:       3,
+			},
+			Validators:       gcconsensus.GetTestnetTransactionValidators(),
+			MappedValidators: gcconsensus.GetTestnetTransactionVersionMappedValidators(),
 		}, nil
 
 	default:

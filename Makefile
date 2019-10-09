@@ -2,7 +2,8 @@ all: install
 
 daemonpkgs = ./cmd/goldchaind
 clientpkgs = ./cmd/goldchainc
-pkgs = $(daemonpkgs) $(clientpkgs)
+pkgs = $(daemonpkgs) $(clientpkgs) ./extensions/custodyfees  ./extensions/custodyfees/types ./extensions/custodyfees/api ./extensions/custodyfees/client ./extensions/custodyfees/modules/explorer ./pkg/config ./pkg/types ./pkg/api ./pkg/client ./frontend/faucet ./modules ./modules/wallet ./modules/consensus
+testpkgs =  ./extensions/custodyfees ./extensions/custodyfees/types ./modules/wallet ./modules/consensus
 
 version = $(shell git describe --abbrev=0 || echo 'v0.1')
 commit = $(shell git rev-parse --short HEAD)
@@ -22,6 +23,7 @@ daemonbin = $(stdoutput)/goldchaind
 clientbin = $(stdoutput)/goldchainc
 
 test: fmt vet
+	go test -race -v -tags='debug testing' -timeout=60s $(testpkgs)
 
 # fmt calls go fmt on all packages.
 fmt:
@@ -90,7 +92,10 @@ check-%:
 		exit 1; \
 	fi
 
+lint: fmt
+	goimports -w $(pkgs)
+
 ineffassign:
 	ineffassign $(pkgs)
 
-.PHONY: all test fmt generate vet install install-profile-std install-std embed-explorer-version explorer release-explorer release-flist archive release-dir get_hub_jwt check-%
+.PHONY: all test fmt generate vet install install-profile-std install-std embed-explorer-version explorer release-explorer release-flist archive release-dir get_hub_jwt check-% lint ineffassign

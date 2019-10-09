@@ -1,6 +1,7 @@
 package main
 
 import (
+	cftypes "github.com/nbh-digital/goldchain/extensions/custodyfees/types"
 	goldchaintypes "github.com/nbh-digital/goldchain/pkg/types"
 	"github.com/threefoldtech/rivine/extensions/authcointx"
 	authcointxcli "github.com/threefoldtech/rivine/extensions/authcointx/client"
@@ -20,6 +21,8 @@ func RegisterTestnetTransactions(bc *client.BaseClient) {
 }
 
 func registerTransactions(bc *client.BaseClient) {
+	registerConditionTypes(bc)
+
 	// create minting plugin client...
 	mintingCLI := mintingcli.NewPluginConsensusClient(bc)
 	// ...and register minting types
@@ -46,4 +49,9 @@ func registerTransactions(bc *client.BaseClient) {
 		AuthInfoGetter:     authCoinTxCLI,
 		TransactionVersion: goldchaintypes.TransactionVersionAuthAddressUpdate,
 	})
+}
+
+func registerConditionTypes(bc *client.BaseClient) {
+	types.RegisterUnlockConditionType(cftypes.ConditionTypeCustodyFee,
+		func() types.MarshalableUnlockCondition { return &cftypes.CustodyFeeCondition{} })
 }

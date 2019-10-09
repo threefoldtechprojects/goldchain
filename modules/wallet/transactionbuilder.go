@@ -10,6 +10,9 @@ import (
 	"github.com/threefoldtech/rivine/build"
 	"github.com/threefoldtech/rivine/modules"
 	"github.com/threefoldtech/rivine/types"
+
+	"github.com/nbh-digital/goldchain/extensions/custodyfees"
+	cftypes "github.com/nbh-digital/goldchain/extensions/custodyfees/types"
 )
 
 var (
@@ -84,69 +87,93 @@ func (tb *transactionBuilder) FundCoins(amount types.Currency, refundAddress *ty
 	// Create a transaction that will add the correct amount of siacoins to the
 	// transaction.
 	var fund types.Currency
+	var coinfo custodyfees.CoinOutputInfo
 	// potentialFund tracks the balance of the wallet including outputs that
 	// have been spent in other unconfirmed transactions recently. This is to
 	// provide the user with a more useful error message in the event that they
 	// are overspending.
 	var potentialFund types.Currency
 	var spentScoids []types.CoinOutputID
-	for i := range so.ids {
-		scoid := so.ids[i]
-		sco := so.outputs[i]
-		// Check that this output has not recently been spent by the wallet.
-		spendHeight := tb.wallet.spentOutputs[types.OutputID(scoid)]
-		// Prevent an underflow error.
-		allowedHeight := tb.wallet.consensusSetHeight - RespendTimeout
-		if tb.wallet.consensusSetHeight < RespendTimeout {
-			allowedHeight = 0
-		}
-		if spendHeight > allowedHeight {
-			potentialFund = potentialFund.Add(sco.Value)
-			continue
-		}
+	coinInputInfoMap := map[types.CoinOutputID]custodyfees.CoinOutputInfo{}
+	var custodyFeeTotal types.Currency
+	tb.wallet.cfplugin.ViewCoinOutputInfo(func(view custodyfees.CoinOutputInfoView) error {
+		for i := range so.ids {
+			scoid := so.ids[i]
+			sco := so.outputs[i]
+			// Check that this output has not recently been spent by the wallet.
+			spendHeight := tb.wallet.spentOutputs[types.OutputID(scoid)]
+			// Prevent an underflow error.
+			allowedHeight := tb.wallet.consensusSetHeight - RespendTimeout
+			if tb.wallet.consensusSetHeight < RespendTimeout {
+				allowedHeight = 0
+			}
 
-		// prepare fulfillment, matching the output
-		uh := sco.Condition.UnlockHash()
-		var ff types.MarshalableUnlockFulfillment
-		switch sco.Condition.ConditionType() {
-		case types.ConditionTypeUnlockHash, types.ConditionTypeTimeLock:
-			// ConditionTypeTimeLock is fine, as we know it's fulfillable,
-			// and that can only mean for now that it is using an internal unlockHashCondition or nilCondition
-			pk, _, err := tb.wallet.getKey(uh)
+			var err error
+			coinfo, err = view.GetCoinOutputInfo(scoid, ctx.BlockTime)
 			if err != nil {
 				return err
 			}
-			ff = types.NewSingleSignatureFulfillment(pk)
-		default:
-			build.Severe(fmt.Errorf("unexpected condition type: %[1]v (%[1]T)", sco.Condition))
-			return types.ErrUnexpectedUnlockCondition
-		}
-		// Add a coin input for this output.
-		sci := types.CoinInput{
-			ParentID:    scoid,
-			Fulfillment: types.NewFulfillment(ff),
-		}
-		tb.coinInputs = append(tb.coinInputs, inputSignContext{
-			InputIndex: len(tb.transaction.CoinInputs),
-			UnlockHash: uh,
-		})
-		tb.transaction.CoinInputs = append(tb.transaction.CoinInputs, sci)
 
-		spentScoids = append(spentScoids, scoid)
+			if spendHeight > allowedHeight {
+				potentialFund = potentialFund.Add(coinfo.SpendableValue)
+				continue
+			}
 
-		// Add the output to the total fund
-		fund = fund.Add(sco.Value)
-		potentialFund = potentialFund.Add(sco.Value)
-		if fund.Cmp(amount) >= 0 {
-			break
+			// prepare fulfillment, matching the output
+			uh := sco.Condition.UnlockHash()
+			var ff types.MarshalableUnlockFulfillment
+			switch sco.Condition.ConditionType() {
+			case types.ConditionTypeUnlockHash, types.ConditionTypeTimeLock:
+				// ConditionTypeTimeLock is fine, as we know it's fulfillable,
+				// and that can only mean for now that it is using an internal unlockHashCondition or nilCondition
+				pk, _, err := tb.wallet.getKey(uh)
+				if err != nil {
+					return err
+				}
+				ff = types.NewSingleSignatureFulfillment(pk)
+			default:
+				build.Severe(fmt.Errorf("unexpected condition type: %[1]v (%[1]T)", sco.Condition))
+				return types.ErrUnexpectedUnlockCondition
+			}
+			// Add a coin input for this output.
+			sci := types.CoinInput{
+				ParentID:    scoid,
+				Fulfillment: types.NewFulfillment(ff),
+			}
+			tb.coinInputs = append(tb.coinInputs, inputSignContext{
+				InputIndex: len(tb.transaction.CoinInputs),
+				UnlockHash: uh,
+			})
+			coinInputInfoMap[scoid] = coinfo
+			custodyFeeTotal = custodyFeeTotal.Add(coinfo.CustodyFee)
+			tb.transaction.CoinInputs = append(tb.transaction.CoinInputs, sci)
+
+			spentScoids = append(spentScoids, scoid)
+
+			// Add the output to the total fund
+			fund = fund.Add(coinfo.SpendableValue)
+			potentialFund = potentialFund.Add(coinfo.SpendableValue)
+			if fund.Cmp(amount) >= 0 {
+				break
+			}
 		}
-	}
+		return nil
+	})
 	if potentialFund.Cmp(amount) >= 0 && fund.Cmp(amount) < 0 {
 		return modules.ErrIncompleteTransactions
 	}
 	if fund.Cmp(amount) < 0 {
 		return modules.ErrLowBalance
 	}
+
+	// Create and add the Custody Fee Coin Output
+	custodyFeeCoinOutput := types.CoinOutput{
+		Value: custodyFeeTotal,
+		Condition: types.NewCondition(&cftypes.CustodyFeeCondition{
+			ComputationTime: ctx.BlockTime,
+		}),
+	}
+	tb.transaction.CoinOutputs = append(tb.transaction.CoinOutputs, custodyFeeCoinOutput)
 
 	// Create a refund output if needed.
 	if !amount.Equals(fund) {
@@ -162,8 +189,9 @@ func (tb *transactionBuilder) FundCoins(amount types.Currency, refundAddress *ty
 				if !exists {
 					co = tb.getCoFromUnconfirmedProcessedTransactions(ci.ParentID)
 				}
-				if maxCoinAmount.Cmp(co.Value) < 0 {
-					maxCoinAmount = co.Value
+				coinfo = coinInputInfoMap[ci.ParentID]
+				if maxCoinAmount.Cmp(coinfo.SpendableValue) < 0 {
+					maxCoinAmount = coinfo.SpendableValue
 					refundUnlockHash = co.Condition.UnlockHash()
 				}
 			}
@@ -416,6 +444,9 @@ func (tb *transactionBuilder) Drop() {
 	for _, txn := range txns {
 		for _, sci := range txn.CoinInputs {
 			delete(tb.wallet.spentOutputs, types.OutputID(sci.ParentID))
+		}
+		for _, bsi := range txn.BlockStakeInputs {
+			delete(tb.wallet.spentOutputs, types.OutputID(bsi.ParentID))
 		}
 	}
 

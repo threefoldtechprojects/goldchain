@@ -9,6 +9,8 @@ import (
 
 	"github.com/nbh-digital/goldchain/pkg/config"
 
+	cfcli "github.com/nbh-digital/goldchain/extensions/custodyfees/client"
+	gccli "github.com/nbh-digital/goldchain/pkg/client"
 	"github.com/nbh-digital/goldchain/pkg/types"
 	authcointxcli "github.com/threefoldtech/rivine/extensions/authcointx/client"
 	mintingcli "github.com/threefoldtech/rivine/extensions/minting/client"
@@ -27,17 +29,12 @@ func main() {
 
 	// register goldchain-specific explorer commands
 	mintingcli.CreateExploreCmd(cliClient.CommandLineClient)
+	cfcli.CreateExplorerSubCmds(cliClient.CommandLineClient)
 	mintingcli.CreateConsensusCmd(cliClient.CommandLineClient)
+	cfcli.CreateConsensusSubCmds(cliClient.CommandLineClient)
 
 	// add cli wallet extension commands
-	mintingcli.CreateWalletCmds(
-		cliClient.CommandLineClient,
-		types.TransactionVersionMinterDefinition,
-		types.TransactionVersionCoinCreation,
-		&mintingcli.WalletCmdsOpts{
-			CoinDestructionTxVersion: types.TransactionVersionCoinDestruction,
-		},
-	)
+	gccli.CreateMintingWalletCmds(cliClient.CommandLineClient)
 
 	authcointxcli.CreateExploreAuthCoinInfoCmd(cliClient.CommandLineClient)
 	authcointxcli.CreateWalletCmds(
@@ -51,7 +48,7 @@ func main() {
 		if cfg == nil {
 			bchainInfo := config.GetBlockchainInfo()
 			chainConstants := config.GetDefaultGenesis()
-			daemonConstants := modules.NewDaemonConstants(bchainInfo, chainConstants)
+			daemonConstants := modules.NewDaemonConstants(bchainInfo, chainConstants, nil)
 			newCfg := client.ConfigFromDaemonConstants(daemonConstants)
 			cfg = &newCfg
 		}

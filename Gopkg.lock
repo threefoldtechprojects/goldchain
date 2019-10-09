@@ -58,12 +58,12 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:f97285a3b0a496dcf8801072622230d513f69175665d94de60eb042d03387f6c"
+  digest = "1:84a35669b4b31cc20ffc89c3b2ab32f2189fb2366a973efa1c25e009ef6ae1c6"
   name = "github.com/julienschmidt/httprouter"
   packages = ["."]
   pruneopts = "UT"
-  revision = "348b672cd90d8190f8240323e372ecd1e66b59dc"
-  version = "v1.2.0"
+  revision = "4eec211fa4e8df74ed978dc5681612131854144f"
+  version = "v1.3.0"
 
 [[projects]]
   digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
@@ -107,7 +107,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:c4020b17cf58fec8102087f3c1c5f2937590b7d2bffbb647b6a2b7cd0c9a8839"
+  digest = "1:ff325b5c65fc68b62595d7d3e13aa2cae408142e5a6ff2cdf3f456c446aa18c7"
   name = "github.com/threefoldtech/rivine"
   packages = [
     "build",
@@ -124,7 +124,6 @@
     "modules/explorer",
     "modules/gateway",
     "modules/transactionpool",
-    "modules/wallet",
     "persist",
     "pkg/api",
     "pkg/cli",
@@ -137,7 +136,7 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "3a3ffa4833e34a71d66fc71bfaa7a5c71547aaf2"
+  revision = "c1c0d190978ea45abebf44d02d072535004a2b16"
 
 [[projects]]
   branch = "master"
@@ -185,11 +184,11 @@
     "twofish",
   ]
   pruneopts = "UT"
-  revision = "a832865fa7ada6126f4c6124ac49f71be71bff2a"
+  revision = "34f69633bfdcf9db92f698f8487115767eebef81"
 
 [[projects]]
   branch = "master"
-  digest = "1:a167b5c532f3245f5a147ade26185f16d6ee8f8d3f6c9846f447e9d8b9705505"
+  digest = "1:94002ae1eb37d085f9aca990b3246b0cf6f0d114b5c0924aedd8eaf2a912143f"
   name = "golang.org/x/net"
   packages = [
     "html",
@@ -197,18 +196,18 @@
     "html/charset",
   ]
   pruneopts = "UT"
-  revision = "c00fd9afed17cfdca9b3e1e3b8de7ef2b3f0347b"
+  revision = "72f939374954d0a1b2a1e27dcda950e2724dd5c1"
 
 [[projects]]
   branch = "master"
-  digest = "1:8d3230f740762bbbfc24903fd5eae35d59c5aef26ae4274ab294fd7f77e386c2"
+  digest = "1:7f43afd854a838d8791d363a30b1aba91e64048225d995c5b412eee88f97e979"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
     "unix",
   ]
   pruneopts = "UT"
-  revision = "c990c680b611ac1aeb7d8f2af94a825f98d69720"
+  revision = "543471e840be449c53d44b32c7adf1261ad67e37"
 
 [[projects]]
   digest = "1:8a0baffd5559acaa560f854d7d525c02f4fec2d4f8a214398556fb661a10f6e0"
@@ -244,8 +243,10 @@
   input-imports = [
     "github.com/bgentry/speakeasy",
     "github.com/julienschmidt/httprouter",
+    "github.com/rivine/bbolt",
     "github.com/spf13/cobra",
     "github.com/threefoldtech/rivine/build",
+    "github.com/threefoldtech/rivine/crypto",
     "github.com/threefoldtech/rivine/extensions/authcointx",
     "github.com/threefoldtech/rivine/extensions/authcointx/api",
     "github.com/threefoldtech/rivine/extensions/authcointx/client",
@@ -258,12 +259,14 @@
     "github.com/threefoldtech/rivine/modules/explorer",
     "github.com/threefoldtech/rivine/modules/gateway",
     "github.com/threefoldtech/rivine/modules/transactionpool",
-    "github.com/threefoldtech/rivine/modules/wallet",
+    "github.com/threefoldtech/rivine/persist",
     "github.com/threefoldtech/rivine/pkg/api",
     "github.com/threefoldtech/rivine/pkg/cli",
     "github.com/threefoldtech/rivine/pkg/client",
     "github.com/threefoldtech/rivine/pkg/daemon",
+    "github.com/threefoldtech/rivine/pkg/encoding/rivbin",
     "github.com/threefoldtech/rivine/profile",
+    "github.com/threefoldtech/rivine/sync",
     "github.com/threefoldtech/rivine/types",
   ]
   solver-name = "gps-cdcl"

@@ -31,6 +31,27 @@ function readableDifficulty(hashes) {
 	return addCommasToNumber((hashes / 1)) + ' BS';
 }
 
+// readableDuration takes a duration in seconds and returns it in a more human readable format
+function readableDuration(seconds) {
+	if (!seconds) {
+		return '0 seconds';
+	}
+	var levels = [
+		[Math.floor(seconds / 31536000), 'years'],
+		[Math.floor((seconds % 31536000) / 86400), 'days'],
+		[Math.floor(((seconds % 31536000) % 86400) / 3600), 'hours'],
+		[Math.floor((((seconds % 31536000) % 86400) % 3600) / 60), 'minutes'],
+		[(((seconds % 31536000) % 86400) % 3600) % 60, 'seconds'],
+	];
+	var returntext = '';
+
+	for (var i = 0, max = levels.length; i < max; i++) {
+		if ( levels[i][0] === 0 ) continue;
+		returntext += ', ' + levels[i][0] + ' ' + (levels[i][0] === 1 ? levels[i][1].substr(0, levels[i][1].length-1): levels[i][1]);
+	};
+	return returntext.trim().substr(2);
+}
+
 // linkHash takes a hash and returns a link that has the hash as text and
 // leads to the hashes hash page.
 function linkHash(domParent, hash, label) {
@@ -264,6 +285,7 @@ function appendBlockMinerPayouts(element, explorerBlock) {
 	appendStatTableTitle(element, 'Reward and Fee Payouts');
 	var txIndex = 0;
 	var i = 0;
+
 	for (; i < explorerBlock.rawblock.minerpayouts.length;) {
 		if (txIndex >= explorerBlock.transactions.length) {
 			// continue the rest using the old approach,
@@ -275,7 +297,7 @@ function appendBlockMinerPayouts(element, explorerBlock) {
 				linkHash(doms[2], explorerBlock.minerpayoutids[i]);
 				doms = appendStat(table, 'Payout Address', '');
 				linkHash(doms[2], explorerBlock.rawblock.minerpayouts[i].unlockhash);
-				appendStat(table, 'Value', readableCoins(explorerBlock.rawblock.minerpayouts[i].value));
+				appendCoinOutputUsingCustodyInfo(table, explorerBlock.minerpayoutcustodyfees[i]);
 
 				element.appendChild(table);
 			}
@@ -289,7 +311,7 @@ function appendBlockMinerPayouts(element, explorerBlock) {
 			linkHash(doms[2], explorerBlock.minerpayoutids[i]);
 			doms = appendStat(table, 'Payout Address', '');
 			linkHash(doms[2], explorerBlock.rawblock.minerpayouts[i].unlockhash);
-			appendStat(table, 'Value', readableCoins(explorerBlock.rawblock.minerpayouts[i].value));
+			appendCoinOutputUsingCustodyInfo(table, explorerBlock.minerpayoutcustodyfees[i]);
 			if (i == 0) {
 				appendStat(table, 'Source Description', 'Block Creator Reward (New Coins)');
 				txIndex++
@@ -318,7 +340,7 @@ function appendBlockMinerPayouts(element, explorerBlock) {
 			linkHash(doms[2], explorerBlock.minerpayoutids[i]);
 			doms = appendStat(table, 'Payout Address', '');
 			linkHash(doms[2], explorerBlock.rawblock.minerpayouts[i].unlockhash);
-			appendStat(table, 'Value', readableCoins(explorerBlock.rawblock.minerpayouts[i].value));
+			appendCoinOutputUsingCustodyInfo(table, explorerBlock.minerpayoutcustodyfees[i]);
 			doms = appendStat(table, 'Source Transaction ID', '');
 			linkHash(doms[2], payouts[u].txid);
 			appendStat(table, 'Source Description', payouts[u].desc);
@@ -477,10 +499,37 @@ function getBlockchainConstants() {
 	return JSON.parse(request.responseText);
 }
 
+function appendCoinOutputUsingCustodyInfo(table, info) {
+	appendStat(table, 'Creation Time', formatUnixTime(info.creationtime));
+	appendStat(table, 'Creation Value', readableCoins(info.creationvalue));
+	if (info.iscustodyfee) {
+		return;
+	}
+	var spentValue, feeLabel, ageLabel, spendableValueLabel;
+	if (info.spent) {
+		spentValue = 'Yes';
+		feeLabel = 'Custody Fee Paid';
+		ageLabel = 'Age When Spent';
+		spendableValueLabel = 'Spent Value';
+	} else {
+		spentValue = 'No';
+		feeLabel = 'Custody Fee To Pay';
+		ageLabel = 'Current Age';
+		spendableValueLabel = 'Spendable Value';
+	}
+	appendStat(table, 'Has Been Spent', spentValue);
+	appendStat(table, ageLabel, readableDuration(info.feecomputationtime-info.creationtime));
+	appendStat(table, feeLabel, readableCoins(info.custodyfee));
+	appendStat(table, spendableValueLabel, readableCoins(info.spendablevalue));
+}
 
 //Changes the document title according to the network the page is running on
 function buildPageTitle() {
-	var networkName = getBlockchainConstants().chaininfo.NetworkName;
+	var networkName = 'devnet';
+	var constants = getBlockchainConstants();
+	if (constants && constants.chaininfo && constants.chaininfo.NetworkName) {
+		networkName = constants.chaininfo.NetworkName;
+	}
 
 	switch(networkName) {
 		case 'testnet':

@@ -156,6 +156,11 @@ func (p *Plugin) ApplyBlock(block modules.ConsensusBlock, bucket *persist.LazyBo
 	return nil
 }
 
+// ApplyBlockHeader applies nothing and has no effect on this plugin.
+func (p *Plugin) ApplyBlockHeader(modules.ConsensusBlockHeader, *persist.LazyBoltBucket) error {
+	return nil
+}
+
 // ApplyTransaction applies a minting transactions to the minting bucket.
 func (p *Plugin) ApplyTransaction(txn modules.ConsensusTransaction, bucket *persist.LazyBoltBucket) error {
 	if bucket == nil {
@@ -212,6 +217,11 @@ func (p *Plugin) RevertBlock(block modules.ConsensusBlock, bucket *persist.LazyB
 			return err
 		}
 	}
+	return nil
+}
+
+// RevertBlockHeader reverts nothing and has no effect on this plugin.
+func (p *Plugin) RevertBlockHeader(modules.ConsensusBlockHeader, *persist.LazyBoltBucket) error {
 	return nil
 }
 
@@ -514,6 +524,9 @@ func (p *Plugin) validateCoinDestructionTxCreation(tx modules.ConsensusTransacti
 
 // Close unregisters the plugin from the consensus
 func (p *Plugin) Close() error {
+	if p.storage == nil {
+		return nil
+	}
 	return p.storage.Close()
 }
 

@@ -29,9 +29,10 @@ As this wallet is recovered as a plain wallet it does not have to be unlocked an
 ```
 $ goldchainc wallet
 Wallet status:
-Encrypted, Unlocked
-Confirmed Balance:   100006530 GFT
+Unencrypted, Unlocked
+Confirmed Balance:   98,584,062.669339956 GFT
 Locked Balance:      0 GFT
+Custody Fees To Pay: 915.061381909 GFT
 Unconfirmed Delta:   + 0 GFT
 BlockStakes:         3000 BS
 ```

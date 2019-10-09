@@ -48,7 +48,7 @@ func main() {
 		if cfg == nil {
 			bchainInfo := config.GetBlockchainInfo()
 			chainConstants := config.GetDefaultGenesis()
-			daemonConstants := modules.NewDaemonConstants(bchainInfo, chainConstants)
+			daemonConstants := modules.NewDaemonConstants(bchainInfo, chainConstants, nil)
 			newCfg := client.ConfigFromDaemonConstants(daemonConstants)
 			cfg = &newCfg
 		}

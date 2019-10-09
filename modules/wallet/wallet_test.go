@@ -679,6 +679,10 @@ func (css *consensusSetStub) UnregisterPlugin(name string, plugin modules.Consen
 	// Do nothing
 }
 
+func (css *consensusSetStub) LoadedPlugins() []string {
+	return nil
+}
+
 func (css *consensusSetStub) SetTransactionValidators(validators ...modules.TransactionValidationFunction) {
 	// Do nothing
 }

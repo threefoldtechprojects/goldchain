@@ -102,9 +102,15 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 		// which requires a user agent should one be configured
 		srv.Handle("/", rivineapi.RequireUserAgentHandler(router, cfg.RequiredUserAgent))
 
+		var cs modules.ConsensusSet
+
 		// register our special daemon HTTP handlers
 		router.GET("/daemon/constants", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-			constants := modules.NewDaemonConstants(cfg.BlockchainInfo, networkCfg.Constants)
+			var pluginNames []string
+			if cs != nil {
+				pluginNames = cs.LoadedPlugins()
+			}
+			constants := modules.NewDaemonConstants(cfg.BlockchainInfo, networkCfg.Constants, pluginNames)
 			rivineapi.WriteJSON(w, constants)
 		})
 		router.GET("/daemon/version", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
@@ -152,7 +158,6 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			}()
 		}
 
-		var cs modules.ConsensusSet
 		var mintingPlugin *minting.Plugin
 		var authCoinTxPlugin *authcointx.Plugin
 		var custodyFeesPlugin *cfplugin.Plugin

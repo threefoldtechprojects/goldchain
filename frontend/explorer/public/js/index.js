@@ -2,6 +2,9 @@ function fillGeneralStats() {
 	var request = new XMLHttpRequest();
 	request.open('GET', '/explorer', true);
 	request.onload = function() {
+		if (request.status !== 200) {
+			return;
+		}
 		var explorerStatus = JSON.parse(request.responseText);
 
 		var height = document.getElementById('height');
@@ -20,6 +23,9 @@ function fillCoinOutputStats() {
 	var request = new XMLHttpRequest();
 	request.open('GET', '/explorer/custodyfees/metrics/chain', true);
 	request.onload = function() {
+		if (request.status !== 200) {
+			return;
+		}
 		var chainStats = JSON.parse(request.responseText);
 
 		document.getElementById('time').innerHTML = formatUnixTime(chainStats.time);

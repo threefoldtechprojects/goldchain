@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -628,60 +627,6 @@ func (walletCmd *walletCmd) sendBlockStakesCmd(cmd *cobra.Command, args []string
 	}
 }
 
-type outputPair struct {
-	Condition types.UnlockConditionProxy
-	Value     types.Currency
-}
-
-// parseCurrencyString takes the string representation of a currency value
-type parseCurrencyString func(string) (types.Currency, error)
-
-func stringToBlockStakes(input string) (types.Currency, error) {
-	bsv, err := strconv.ParseUint(input, 10, 64)
-	return types.NewCurrency64(bsv), err
-}
-
-func parsePairedOutputs(args []string, parseCurrency parseCurrencyString) (pairs []outputPair, err error) {
-	argn := len(args)
-	if argn < 2 {
-		err = errors.New("not enough arguments, at least 2 required")
-		return
-	}
-	if argn%2 != 0 {
-		err = errors.New("arguments have to be given in pairs of '<dest>|<rawCondition>'+'<value>'")
-		return
-	}
-
-	for i := 0; i < argn; i += 2 {
-		// parse value first, as it's the one without any possibility of ambiguity
-		var pair outputPair
-		pair.Value, err = parseCurrency(args[i+1])
-		if err != nil {
-			err = fmt.Errorf("failed to parse amount/value for output #%d: %v", i/2, err)
-			return
-		}
-
-		// try to parse it as an unlock hash
-		var uh types.UnlockHash
-		err = uh.LoadString(args[i])
-		if err == nil {
-			// parsing as an unlock hash was succesfull, store the pair and continue to the next pair
-			pair.Condition = types.NewCondition(types.NewUnlockHashCondition(uh))
-			pairs = append(pairs, pair)
-			continue
-		}
-
-		// try to parse it as a JSON-encoded unlock condition
-		err = pair.Condition.UnmarshalJSON([]byte(args[i]))
-		if err != nil {
-			err = fmt.Errorf("condition has to be UnlockHash or JSON-encoded UnlockCondition, output #%d's was neither", i/2)
-			return
-		}
-		pairs = append(pairs, pair)
-	}
-	return
-}
-
 // registerDataCmd registers data on the blockchain by making a minimal transaction to the designated address
 // and includes the data in the transaction
 func (walletCmd *walletCmd) registerDataCmd(namespace, dest, data string) {
@@ -768,61 +713,60 @@ BlockStakes:         %v BS
 	}
 
 	// multisig wallets are not enabled at the moment
-	/*
-		if len(status.MultiSigWallets) > 0 {
-			fmt.Println()
-			fmt.Println("Multisig Wallets:")
+	if len(status.MultiSigWallets) > 0 {
+		fmt.Println()
+		fmt.Println("Multisig Wallets:")
+	}
+
+	for _, wallet := range status.MultiSigWallets {
+		// Print separator
+		fmt.Println()
+		fmt.Println("==============================================================================")
+		fmt.Println()
+
+		unconfirmedBalance := wallet.ConfirmedCoinBalance.Add(wallet.UnconfirmedIncomingCoins).Sub(wallet.UnconfirmedOutgoingCoins)
+		var coindelta string
+		if unconfirmedBalance.Cmp(wallet.ConfirmedCoinBalance) >= 0 {
+			coindelta = "+ " + currencyConvertor.ToCoinStringWithUnit(unconfirmedBalance.Sub(wallet.ConfirmedCoinBalance))
+		} else {
+			coindelta = "- " + currencyConvertor.ToCoinStringWithUnit(wallet.ConfirmedCoinBalance.Sub(unconfirmedBalance))
 		}
 
-		for _, wallet := range status.MultiSigWallets {
-			// Print separator
-			fmt.Println()
-			fmt.Println("==============================================================================")
-			fmt.Println()
-
-			unconfirmedBalance := wallet.ConfirmedCoinBalance.Add(wallet.UnconfirmedIncomingCoins).Sub(wallet.UnconfirmedOutgoingCoins)
-			var coindelta string
-			if unconfirmedBalance.Cmp(wallet.ConfirmedCoinBalance) >= 0 {
-				coindelta = "+ " + currencyConvertor.ToCoinStringWithUnit(unconfirmedBalance.Sub(wallet.ConfirmedCoinBalance))
-			} else {
-				coindelta = "- " + currencyConvertor.ToCoinStringWithUnit(wallet.ConfirmedCoinBalance.Sub(unconfirmedBalance))
-			}
-
-			unconfirmedBlockStakeBalance := wallet.ConfirmedBlockStakeBalance.Add(wallet.UnconfirmedIncomingBlockStakes).Sub(wallet.UnconfirmedOutgoingBlockStakes)
-			var bsdelta string
-			if unconfirmedBlockStakeBalance.Cmp(wallet.ConfirmedBlockStakeBalance) >= 0 {
-				bsdelta = "+ " + unconfirmedBalance.Sub(wallet.ConfirmedBlockStakeBalance).String()
-			} else {
-				bsdelta = "- " + wallet.ConfirmedBlockStakeBalance.Sub(unconfirmedBlockStakeBalance).String()
-			}
-
-			fmt.Printf("%v\n", wallet.Address)
-			fmt.Printf("Confirmed Balance:            %v\n", currencyConvertor.ToCoinStringWithUnit(wallet.ConfirmedCoinBalance))
-			if !wallet.ConfirmedLockedCoinBalance.IsZero() {
-				fmt.Printf("Locked Balance:               %v\n", currencyConvertor.ToCoinStringWithUnit(wallet.ConfirmedLockedCoinBalance))
-			}
-			if wallet.UnconfirmedIncomingCoins.Cmp(wallet.UnconfirmedOutgoingCoins) != 0 {
-				fmt.Printf("Unconfirmed Delta:            %v\n", coindelta)
-			}
-			if !wallet.ConfirmedBlockStakeBalance.IsZero() {
-				fmt.Printf("BlockStakes:                  %v BS\n", wallet.ConfirmedBlockStakeBalance)
-			}
-			if !wallet.ConfirmedLockedBlockStakeBalance.IsZero() {
-				fmt.Printf("Locked BlockStakes:           %v BS\n", wallet.ConfirmedLockedBlockStakeBalance)
-			}
-			if wallet.UnconfirmedIncomingBlockStakes.Cmp(wallet.UnconfirmedOutgoingBlockStakes) != 0 {
-				fmt.Printf("Unconfirmed blockstake delta: %v BS\n", bsdelta)
-			}
-
-			fmt.Println()
-			fmt.Println("Possible signatories:")
-			for _, uh := range wallet.Owners {
-				fmt.Println(uh)
-			}
-			fmt.Println()
-			fmt.Println("Minimum signatures required:", wallet.MinSigs)
+		unconfirmedBlockStakeBalance := wallet.ConfirmedBlockStakeBalance.Add(wallet.UnconfirmedIncomingBlockStakes).Sub(wallet.UnconfirmedOutgoingBlockStakes)
+		var bsdelta string
+		if unconfirmedBlockStakeBalance.Cmp(wallet.ConfirmedBlockStakeBalance) >= 0 {
+			bsdelta = "+ " + unconfirmedBalance.Sub(wallet.ConfirmedBlockStakeBalance).String()
+		} else {
+			bsdelta = "- " + wallet.ConfirmedBlockStakeBalance.Sub(unconfirmedBlockStakeBalance).String()
 		}
-	*/
+
+		fmt.Printf("%v\n", wallet.Address)
+		fmt.Printf("Confirmed Balance:             %v\n", currencyConvertor.ToCoinStringWithUnit(wallet.ConfirmedCoinBalance))
+		fmt.Printf("Confirmed Custody Fees To Pay: %v\n", currencyConvertor.ToCoinStringWithUnit(wallet.ConfirmedCustodyFeeDebt))
+		if !wallet.ConfirmedLockedCoinBalance.IsZero() {
+			fmt.Printf("Locked Balance:                %v\n", currencyConvertor.ToCoinStringWithUnit(wallet.ConfirmedLockedCoinBalance))
+		}
+		if wallet.UnconfirmedIncomingCoins.Cmp(wallet.UnconfirmedOutgoingCoins) != 0 {
+			fmt.Printf("Unconfirmed Delta:             %v\n", coindelta)
+		}
+		if !wallet.ConfirmedBlockStakeBalance.IsZero() {
+			fmt.Printf("BlockStakes:                   %v BS\n", wallet.ConfirmedBlockStakeBalance)
+		}
+		if !wallet.ConfirmedLockedBlockStakeBalance.IsZero() {
+			fmt.Printf("Locked BlockStakes:            %v BS\n", wallet.ConfirmedLockedBlockStakeBalance)
+		}
+		if wallet.UnconfirmedIncomingBlockStakes.Cmp(wallet.UnconfirmedOutgoingBlockStakes) != 0 {
+			fmt.Printf("Unconfirmed blockstake delta:  %v BS\n", bsdelta)
+		}
+
+		fmt.Println()
+		fmt.Println("Possible signatories:")
+		for _, uh := range wallet.Owners {
+			fmt.Println(uh)
+		}
+		fmt.Println()
+		fmt.Println("Minimum signatures required:", wallet.MinSigs)
+	}
 }
 
 // listTransactionsCmd lists all of the transactions related to the wallet,

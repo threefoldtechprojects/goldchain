@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/nbh-digital/goldchain/extensions/custodyfees"
+	cftypes "github.com/nbh-digital/goldchain/extensions/custodyfees/types"
 	gcmodules "github.com/nbh-digital/goldchain/modules"
 )
 
@@ -30,7 +32,7 @@ type (
 		BlockStakeBalance       types.Currency `json:"blockstakebalance"`
 		LockedBlockStakeBalance types.Currency `json:"lockedblockstakebalance"`
 
-		MultiSigWallets []modules.MultiSigWallet `json:"multisigwallets"`
+		MultiSigWallets []gcmodules.MultiSigWallet `json:"multisigwallets"`
 	}
 
 	// WalletListUnlockedGET contains the set of unspent, unlocked coin
@@ -60,6 +62,14 @@ type (
 		ConfirmedTransactions   []gcmodules.ProcessedTransaction `json:"confirmedtransactions"`
 		UnconfirmedTransactions []modules.ProcessedTransaction   `json:"unconfirmedtransactions"`
 	}
+
+	// WalletFundCoinsGet is the resulting object that is returned,
+	// to be used by a client to fund a transaction of any type.
+	WalletFundCoinsGet struct {
+		CoinInputs          []types.CoinInput `json:"coininputs"`
+		CustodyFeeCondition types.CoinOutput  `json:"custodyfeecondition"`
+		RefundCoinOutput    *types.CoinOutput `json:"refund"`
+	}
 )
 
 // RegisterWalletHTTPHandlers registers the regular handlers for all Wallet HTTP endpoints.
@@ -84,7 +94,6 @@ func RegisterWalletHTTPHandlers(router api.Router, wallet gcmodules.Wallet, requ
 	router.POST("/wallet/transaction", api.RequirePasswordHandler(api.NewWalletTransactionCreateHandler(wallet), requiredPassword))
 	router.POST("/wallet/coins", api.RequirePasswordHandler(api.NewWalletCoinsHandler(wallet), requiredPassword))
 	router.POST("/wallet/blockstakes", api.RequirePasswordHandler(api.NewWalletBlockStakesHandler(wallet), requiredPassword))
-	router.POST("/wallet/data", api.RequirePasswordHandler(api.NewWalletDataHandler(wallet), requiredPassword))
 	router.GET("/wallet/transaction/:id", api.NewWalletTransactionHandler(wallet))
 	router.GET("/wallet/transactions", api.NewWalletTransactionsHandler(wallet))
 	router.GET("/wallet/transactions/:addr", api.NewWalletTransactionsAddrHandler(wallet))
@@ -94,7 +103,7 @@ func RegisterWalletHTTPHandlers(router api.Router, wallet gcmodules.Wallet, requ
 	router.POST("/wallet/create/transaction", api.RequirePasswordHandler(api.NewWalletCreateTransactionHandler(wallet), requiredPassword))
 	router.POST("/wallet/sign", api.RequirePasswordHandler(api.NewWalletSignHandler(wallet), requiredPassword))
 	router.GET("/wallet/publickey", api.RequirePasswordHandler(api.NewWalletGetPublicKeyHandler(wallet), requiredPassword))
-	router.GET("/wallet/fund/coins", api.RequirePasswordHandler(api.NewWalletFundCoinsHandler(wallet), requiredPassword))
+	router.GET("/wallet/fund/coins", api.RequirePasswordHandler(NewWalletFundCoinsHandler(wallet), requiredPassword))
 }
 
 // NewWalletRootHandler creates a handler to handle API calls to /wallet.
@@ -120,6 +129,11 @@ func NewWalletRootHandler(wallet gcmodules.Wallet) httprouter.Handle {
 			api.WriteError(w, api.Error{Message: "error after call to /wallet: " + err.Error()}, walletErrorToHTTPStatus(err))
 			return
 		}
+		multiSigWallets, err := wallet.MultiSigWalletsWithCustodyFeeDebt()
+		if err != nil {
+			api.WriteError(w, api.Error{Message: "error after call to /wallet: " + err.Error()}, walletErrorToHTTPStatus(err))
+			return
+		}
 
 		api.WriteJSON(w, WalletGET{
 			Encrypted: wallet.Encrypted(),
@@ -133,6 +147,8 @@ func NewWalletRootHandler(wallet gcmodules.Wallet) httprouter.Handle {
 
 			BlockStakeBalance:       blockstakeBal,
 			LockedBlockStakeBalance: blockstakeLockBal,
+
+			MultiSigWallets: multiSigWallets,
 		})
 	}
 }
@@ -223,6 +239,92 @@ func NewWalletTransactionsHandler(wallet gcmodules.Wallet) httprouter.Handle {
 			ConfirmedTransactions:   confirmedTxns,
 			UnconfirmedTransactions: unconfirmedTxns,
 		})
+	}
+}
+
+// NewWalletFundCoinsHandler creates a handler to handle the API calls to /wallet/fund/coins?amount=.
+// While it might be handy for other use cases, it is needed for 3bot registration
+func NewWalletFundCoinsHandler(wallet gcmodules.Wallet) httprouter.Handle {
+	return func(w http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+		q := req.URL.Query()
+		// parse the amount
+		amountStr := q.Get("amount")
+		if amountStr == "" || amountStr == "0" {
+			api.WriteError(w, api.Error{Message: "an amount has to be specified, greater than 0"}, http.StatusBadRequest)
+			return
+		}
+		var amount types.Currency
+		err := amount.LoadString(amountStr)
+		if err != nil {
+			api.WriteError(w, api.Error{Message: "invalid amount given: " + err.Error()}, http.StatusBadRequest)
+			return
+		}
+
+		// parse optional refund address and reuseRefundAddress from query params
+		var (
+			refundAddress    *types.UnlockHash
+			newRefundAddress bool
+		)
+		refundStr := q.Get("refund")
+		if refundStr != "" {
+			// try as a bool
+			var b bool
+			n, err := fmt.Sscanf(refundStr, "%t", &b)
+			if err == nil && n == 1 {
+				newRefundAddress = b
+			} else {
+				// try as an address
+				var uh types.UnlockHash
+				err = uh.LoadString(refundStr)
+				if err != nil {
+					api.WriteError(w, api.Error{Message: fmt.Sprintf("refund query param has to be a boolean or unlockhash, %s is invalid", refundStr)}, http.StatusBadRequest)
+					return
+				}
+				refundAddress = &uh
+			}
+		}
+
+		// start a transaction and fund the requested amount
+		txbuilder := wallet.StartTransaction()
+		err = txbuilder.FundCoins(amount, refundAddress, !newRefundAddress)
+		if err != nil {
+			api.WriteError(w, api.Error{Message: "failed to fund the requested coins: " + err.Error()}, http.StatusInternalServerError)
+			return
+		}
+
+		// build the dummy Txn, as to view the Txn
+		txn, _ := txbuilder.View()
+		// defer drop the Txn
+		defer txbuilder.Drop()
+
+		// compose the result object and validate it
+		result := WalletFundCoinsGet{
+			CoinInputs: txn.CoinInputs,
+		}
+		if len(result.CoinInputs) == 0 {
+			api.WriteError(w, api.Error{Message: "no coin inputs could be generated"}, http.StatusInternalServerError)
+			return
+		}
+
+		outputLength := len(txn.CoinOutputs)
+		if outputLength == 0 {
+			api.WriteError(w, api.Error{Message: "no coin outputs were generated, while at the very least a custody fee output was expected"}, http.StatusInternalServerError)
+			return
+		}
+		if ct := txn.CoinOutputs[0].Condition.ConditionType(); ct != cftypes.ConditionTypeCustodyFee {
+			api.WriteError(w, api.Error{Message: fmt.Sprintf("unexpected condition type %d, expected custody fee condition type as first generated coin output", ct)}, http.StatusInternalServerError)
+			return
+		}
+		result.CustodyFeeCondition = txn.CoinOutputs[0]
+		if outputLength == 2 {
+			result.RefundCoinOutput = &txn.CoinOutputs[1]
+		} else if outputLength > 2 {
+			api.WriteError(w, api.Error{Message: "more than 2 coin outputs were generated, this is not expected"}, http.StatusInternalServerError)
+			return
+		}
+
+		// all good, return the resulting object
+		api.WriteJSON(w, result)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/nbh-digital/goldchain/pkg/config"
 
 	cfcli "github.com/nbh-digital/goldchain/extensions/custodyfees/client"
+	gccli "github.com/nbh-digital/goldchain/pkg/client"
 	"github.com/nbh-digital/goldchain/pkg/types"
 	authcointxcli "github.com/threefoldtech/rivine/extensions/authcointx/client"
 	mintingcli "github.com/threefoldtech/rivine/extensions/minting/client"
@@ -33,14 +34,7 @@ func main() {
 	cfcli.CreateConsensusSubCmds(cliClient.CommandLineClient)
 
 	// add cli wallet extension commands
-	mintingcli.CreateWalletCmds(
-		cliClient.CommandLineClient,
-		types.TransactionVersionMinterDefinition,
-		types.TransactionVersionCoinCreation,
-		&mintingcli.WalletCmdsOpts{
-			CoinDestructionTxVersion: types.TransactionVersionCoinDestruction,
-		},
-	)
+	gccli.CreateMintingWalletCmds(cliClient.CommandLineClient)
 
 	authcointxcli.CreateExploreAuthCoinInfoCmd(cliClient.CommandLineClient)
 	authcointxcli.CreateWalletCmds(

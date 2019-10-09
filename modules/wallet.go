@@ -28,11 +28,40 @@ type (
 		// heights [startHeight, endHeight]. Unconfirmed transactions are not
 		// included.
 		TransactionsWithCustodyInfo(startHeight types.BlockHeight, endHeight types.BlockHeight) ([]ProcessedTransaction, error)
+
+		// MultiSigWalletsWithCustodyFeeDebt is the same as regular MultiSigWalletsCall but with custody fee debt included.
+		MultiSigWalletsWithCustodyFeeDebt() ([]MultiSigWallet, error)
 	}
 
 	WalletCoinOutput struct {
 		types.CoinOutput
 		CoinInfo custodyfees.CoinOutputInfo `json:"coininfo"`
+	}
+
+	// MultiSigWallet is a collection of coin and blockstake outputs, which have the same
+	// unlockhash.
+	MultiSigWallet struct {
+		ConfirmationBlockHeight    types.BlockHeight `json:"confirmationblockheight"`
+		ConfirmationBlockTimestamp types.Timestamp   `json:"confirmationblocktime"`
+
+		Address             types.UnlockHash           `json:"address"`
+		CoinOutputIDs       []types.CoinOutputID       `json:"coinoutputids"`
+		BlockStakeOutputIDs []types.BlockStakeOutputID `json:"blockstakeoutputids"`
+
+		ConfirmedCoinBalance       types.Currency `json:"confirmedcoinbalance"`
+		ConfirmedLockedCoinBalance types.Currency `json:"confirmedlockedcoinbalance"`
+		ConfirmedCustodyFeeDebt    types.Currency `json:"confirmedcustodyfeedebt"`
+
+		UnconfirmedOutgoingCoins types.Currency `json:"unconfirmedoutgoingcoins"`
+		UnconfirmedIncomingCoins types.Currency `json:"unconfirmedincomingcoins"`
+
+		ConfirmedBlockStakeBalance       types.Currency `json:"confirmedblockstakebalance"`
+		ConfirmedLockedBlockStakeBalance types.Currency `json:"confirmedlockedblockstakebalance"`
+		UnconfirmedOutgoingBlockStakes   types.Currency `json:"unconfirmedoutgoingblockstakes"`
+		UnconfirmedIncomingBlockStakes   types.Currency `json:"unconfirmedincomingblockstakes"`
+
+		Owners  []types.UnlockHash `json:"owners"`
+		MinSigs uint64             `json:"minsigs"`
 	}
 
 	// A ProcessedInput represents funding to a transaction. The input is

@@ -1,4 +1,4 @@
-# goldchain [![Build Status](https://travis-ci.com/nbh-digital/goldchain.svg?branch=master)](https://travis-ci.com/nbh-digital/goldchain)
+# goldchain [![Build Status](https://travis-ci.com/nbh-digital/goldchain.svg?branch=master)](https://travis-ci.com/nbh-digital/goldchain) [![GoDoc](https://godoc.org/github.com/nbh-digital/goldchain?status.svg)](https://godoc.org/github.com/nbh-digital/goldchain) [![Go Report Card](https://goreportcard.com/badge/github.com/nbh-digital/goldchain)](https://goreportcard.com/report/github.com/nbh-digital/goldchain)
 
 > :warning: **WARNING**: software is still in development. It is not yet meant for use in production.
 > Standard network is disabled at the moment.
@@ -109,4 +109,9 @@ Please consult the `--help` menu of the relevant commands using the following co
 - Create a Minter Definition Transaction: `goldchainc wallet create minterdefinitiontransaction --help`
 - Create a Coin Creation Transaction: `goldchainc wallet create coincreationtransaction --help`
 - Explore the mint condition currently active or at a given block height: `goldchainc explore mintcondition --help`
- 
+
+## Repository Owners
+
+* Rob Van Mieghem ([@robvanmieghem](https://github.com/robvanmieghem))
+* Lee Smet ([@leesmet](https://github.com/leesmet))
+* Glen De Cauwsemaecker ([@glendc](https://github.com/glendc))

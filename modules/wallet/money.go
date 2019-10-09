@@ -10,6 +10,7 @@ import (
 	"github.com/threefoldtech/rivine/types"
 
 	"github.com/nbh-digital/goldchain/extensions/custodyfees"
+	gcmodules "github.com/nbh-digital/goldchain/modules"
 )
 
 // various errors returned by the wallet
@@ -184,6 +185,36 @@ func (w *Wallet) UnconfirmedBalance() (outgoingCoins types.Currency, incomingCoi
 
 // MultiSigWallets returns all multisig wallets which contain at least one unlock hash owned by this wallet.
 func (w *Wallet) MultiSigWallets() ([]modules.MultiSigWallet, error) {
+	gcwallets, err := w.MultiSigWalletsWithCustodyFeeDebt()
+	if err != nil {
+		return nil, err
+	}
+	wallets := make([]modules.MultiSigWallet, 0, len(gcwallets))
+	for _, gcwallet := range gcwallets {
+		wallets = append(wallets, modules.MultiSigWallet{
+			Address:             gcwallet.Address,
+			CoinOutputIDs:       gcwallet.CoinOutputIDs,
+			BlockStakeOutputIDs: gcwallet.BlockStakeOutputIDs,
+
+			ConfirmedCoinBalance:       gcwallet.ConfirmedCoinBalance,
+			ConfirmedLockedCoinBalance: gcwallet.ConfirmedLockedCoinBalance,
+			UnconfirmedOutgoingCoins:   gcwallet.UnconfirmedOutgoingCoins,
+			UnconfirmedIncomingCoins:   gcwallet.UnconfirmedIncomingCoins,
+
+			ConfirmedBlockStakeBalance:       gcwallet.ConfirmedBlockStakeBalance,
+			ConfirmedLockedBlockStakeBalance: gcwallet.ConfirmedLockedBlockStakeBalance,
+			UnconfirmedOutgoingBlockStakes:   gcwallet.UnconfirmedOutgoingBlockStakes,
+			UnconfirmedIncomingBlockStakes:   gcwallet.UnconfirmedIncomingBlockStakes,
+
+			Owners:  gcwallet.Owners,
+			MinSigs: gcwallet.MinSigs,
+		})
+	}
+	return wallets, nil
+}
+
+// MultiSigWalletsWithCustodyFeeDebt returns all multisig wallets which contain at least one unlock hash owned by this wallet.
+func (w *Wallet) MultiSigWalletsWithCustodyFeeDebt() ([]gcmodules.MultiSigWallet, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
@@ -191,41 +222,61 @@ func (w *Wallet) MultiSigWallets() ([]modules.MultiSigWallet, error) {
 		return nil, modules.ErrLockedWallet
 	}
 
-	wallets := make(map[types.UnlockHash]*modules.MultiSigWallet)
+	wallets := make(map[types.UnlockHash]*gcmodules.MultiSigWallet)
 
 	ctx := w.getFulfillableContextForLatestBlock()
 
-	var wallet *modules.MultiSigWallet
-	var exists bool
-	for id, co := range w.multiSigCoinOutputs {
-		address := co.Condition.UnlockHash()
-		// Check if the wallet exists
-		if wallet, exists = wallets[address]; !exists {
-			// get the internal multisig unlock condition
-			unlockhashes, minSignatureCount := getMultisigConditionProperties(co.Condition.Condition)
-			if len(unlockhashes) == 0 {
-				w.log.Printf("[ERROR] failed to convert output to multisig condition: type=%T conditionType=%d",
-					co.Condition.Condition, co.Condition.ConditionType())
-				build.Critical("Failed to convert output to multisig condition")
-				continue
+	var (
+		exists bool
+		err    error
+		info   custodyfees.CoinOutputInfo
+		wallet *gcmodules.MultiSigWallet
+	)
+
+	err = w.cfplugin.ViewCoinOutputInfo(func(view custodyfees.CoinOutputInfoView) error {
+		for id, co := range w.multiSigCoinOutputs {
+			address := co.Condition.UnlockHash()
+			// Check if the wallet exists
+			if wallet, exists = wallets[address]; !exists {
+				// get the internal multisig unlock condition
+				unlockhashes, minSignatureCount := getMultisigConditionProperties(co.Condition.Condition)
+				if len(unlockhashes) == 0 {
+					w.log.Printf("[ERROR] failed to convert output to multisig condition: type=%T conditionType=%d",
+						co.Condition.Condition, co.Condition.ConditionType())
+					build.Critical("Failed to convert output to multisig condition")
+					continue
+				}
+				// Create a new wallet for this address
+				wallet = &gcmodules.MultiSigWallet{
+					ConfirmationBlockHeight:    ctx.BlockHeight,
+					ConfirmationBlockTimestamp: ctx.BlockTime,
+					Address:                    address,
+					Owners:                     unlockhashes,
+					MinSigs:                    minSignatureCount,
+				}
+				wallets[address] = wallet
 			}
-			// Create a new wallet for this address
-			wallet = &modules.MultiSigWallet{
-				Address: address,
-				Owners:  unlockhashes,
-				MinSigs: minSignatureCount,
+
+			info, err = view.GetCoinOutputInfo(id, ctx.BlockTime)
+			if err != nil {
+				return err
 			}
-			wallets[address] = wallet
+
+			if !co.Condition.Fulfillable(ctx) {
+				// Add the locked coins if applicable
+				wallet.ConfirmedLockedCoinBalance = wallet.ConfirmedLockedCoinBalance.Add(info.SpendableValue)
+			} else {
+				// Add the coins to the unlocked balance
+				wallet.ConfirmedCoinBalance = wallet.ConfirmedCoinBalance.Add(info.SpendableValue)
+			}
+			wallet.ConfirmedCustodyFeeDebt = wallet.ConfirmedCustodyFeeDebt.Add(info.CustodyFee)
+			// Add the output ID
+			wallet.CoinOutputIDs = append(wallet.CoinOutputIDs, id)
 		}
-		if !co.Condition.Fulfillable(ctx) {
-			// Add the locked coins if applicable
-			wallet.ConfirmedLockedCoinBalance = wallet.ConfirmedLockedCoinBalance.Add(co.Value)
-		} else {
-			// Add the coins to the unlocked balance
-			wallet.ConfirmedCoinBalance = wallet.ConfirmedCoinBalance.Add(co.Value)
-		}
-		// Add the output ID
-		wallet.CoinOutputIDs = append(wallet.CoinOutputIDs, id)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	for id, bso := range w.multiSigBlockStakeOutputs {
@@ -241,10 +292,12 @@ func (w *Wallet) MultiSigWallets() ([]modules.MultiSigWallet, error) {
 				continue
 			}
 			// Create a new wallet for this address
-			wallet = &modules.MultiSigWallet{
-				Address: address,
-				Owners:  unlockhashes,
-				MinSigs: minSignatureCount,
+			wallet = &gcmodules.MultiSigWallet{
+				ConfirmationBlockHeight:    ctx.BlockHeight,
+				ConfirmationBlockTimestamp: ctx.BlockTime,
+				Address:                    address,
+				Owners:                     unlockhashes,
+				MinSigs:                    minSignatureCount,
 			}
 			wallets[address] = wallet
 		}
@@ -277,7 +330,7 @@ func (w *Wallet) MultiSigWallets() ([]modules.MultiSigWallet, error) {
 		}
 	}
 
-	msws := make([]modules.MultiSigWallet, 0, len(wallets))
+	msws := make([]gcmodules.MultiSigWallet, 0, len(wallets))
 	for _, wallet := range wallets {
 		msws = append(msws, *wallet)
 	}

@@ -589,7 +589,7 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 	if (explorerTransaction.rawtransaction.data.coininputs != null && explorerTransaction.rawtransaction.data.coininputs.length > 0) {
 		appendStat(table, 'Coin Input Count', explorerTransaction.rawtransaction.data.coininputs.length);
 	}
-	if (explorerTransaction.rawtransaction.data.refundcoinoutput != null) {
+	if (explorerTransaction.rawtransaction.data.coinoutputs && explorerTransaction.rawtransaction.data.coinoutputs.length > 1) {
 		appendStat(table, 'Refund Coin Output', 'yes');
 	}
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
@@ -626,12 +626,12 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 			coinsBurnedAmount += +cir.amount;
 		}
 	}
-	var refundcoinoutput = explorerTransaction.rawtransaction.data.refundcoinoutput;
-	if (refundcoinoutput != null) {
-		appendStatTableTitle(infoBody, 'Refund Coin Output');
+	if (explorerTransaction.rawtransaction.data.coinoutputs) {
+		custodyfeecoinoutput = explorerTransaction.rawtransaction.data.coinoutputs[0];
+		appendStatTableTitle(infoBody, 'Custody Fee Coin Output');
 		var f;
 		var cor;
-		switch (refundcoinoutput.condition.type) {
+		switch (custodyfeecoinoutput.condition.type) {
 			// handle nil transactions
 			case undefined:
 			case 0:
@@ -655,9 +655,42 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 		}
 		if (f !== null) {
 			var outputTable = createStatsTable()
-			cor = f(ctx, outputTable, explorerTransaction, 0, 'coins', [refundcoinoutput]);
+			cor = f(ctx, outputTable, explorerTransaction, 0, 'coins');
 			infoBody.appendChild(outputTable)
-			coinsBurnedAmount -= +cor.value;
+		}
+		if (explorerTransaction.rawtransaction.data.coinoutputs.length > 1) {
+			refundcoinoutput = explorerTransaction.rawtransaction.data.coinoutputs[1];
+			appendStatTableTitle(infoBody, 'Refund Coin Output');
+			var f;
+			var cor;
+			switch (refundcoinoutput.condition.type) {
+				// handle nil transactions
+				case undefined:
+				case 0:
+					f = addV1NilOutput;
+					break;
+				case 1:
+					f = addV1T1Output;
+					break;
+				case 2:
+					f = addV1T2Output;
+					break;
+				case 3:
+					f = addV1T3Output;
+					break;
+				case 4:
+					f = addV1T4Output;
+					break;
+				case 128:
+					f = addV1T128Output;
+					break;
+			}
+			if (f !== null) {
+				var outputTable = createStatsTable()
+				cor = f(ctx, outputTable, explorerTransaction, 1, 'coins');
+				infoBody.appendChild(outputTable)
+				coinsBurnedAmount -= +cor.creationValue;
+			}
 		}
 	}
 	if (explorerTransaction.rawtransaction.data.arbitrarydata != null) {
@@ -1023,15 +1056,18 @@ function addV1NilOutput(_ctx, table, explorerTransaction, i, type, outputs) {
 	}
 
 	var amount = outputs[i].value;
+	var creatonAmount = amount;
 	if (type === 'coins') {
 		var custodyInfo = explorerTransaction.coinoutputcustodyfees[i];
 		appendCoinOutputUsingCustodyInfo(table, custodyInfo);
 		amount = custodyInfo.spendablevalue;
+		creatonAmount = custodyInfo.creationvalue;
 	} else {
 		appendStat(table, 'Value', amount);
 	}
 	return {
 		value: amount,
+		creationValue: creatonAmount,
 		locked: locked,
 	};
 }
@@ -1056,15 +1092,18 @@ function addV1T1Output(_ctx, table, explorerTransaction, i, type, outputs) {
 	var locked = addV1Condition(_ctx, table, outputs[i].condition.data);
 
 	var amount = outputs[i].value;
+	var creatonAmount = amount;
 	if (type === 'coins') {
 		var custodyInfo = explorerTransaction.coinoutputcustodyfees[i];
 		appendCoinOutputUsingCustodyInfo(table, custodyInfo);
 		amount = custodyInfo.spendablevalue;
+		creatonAmount = custodyInfo.creationvalue;
 	} else {
 		appendStat(table, 'Value', amount);
 	}
 	return {
 		value: amount,
+		creationValue: creatonAmount,
 		locked: locked,
 	};
 }
@@ -1092,15 +1131,18 @@ function addV1T2Output(_ctx, table, explorerTransaction, i, type, outputs) {
 	var locked = addV2Condition(_ctx, table, conditiondata, unlockhash);
 
 	var amount = outputs[i].value;
+	var creatonAmount = amount;
 	if (type === 'coins') {
 		var custodyInfo = explorerTransaction.coinoutputcustodyfees[i];
 		appendCoinOutputUsingCustodyInfo(table, custodyInfo);
 		amount = custodyInfo.spendablevalue;
+		creatonAmount = custodyInfo.creationvalue;
 	} else {
 		appendStat(table, 'Value', amount);
 	}
 	return {
 		value: amount,
+		creationValue: creatonAmount,
 		locked: locked,
 	};
 }
@@ -1143,15 +1185,18 @@ function addV1T3Output(ctx, table, explorerTransaction, i, type, outputs) {
 	var locked = addV3Condition(ctx, table, conditiondata, unlockhash);
 
 	var amount = outputs[i].value;
+	var creatonAmount = amount;
 	if (type === 'coins') {
 		var custodyInfo = explorerTransaction.coinoutputcustodyfees[i];
 		appendCoinOutputUsingCustodyInfo(table, custodyInfo);
 		amount = custodyInfo.spendablevalue;
+		creatonAmount = custodyInfo.creationvalue;
 	} else {
 		appendStat(table, 'Value', amount);
 	}
 	return {
 		value: amount,
+		creationValue: creatonAmount,
 		locked: locked,
 	};
 }
@@ -1213,15 +1258,18 @@ function addV1T4Output(_ctx, table, explorerTransaction, i, type, outputs) {
 	var locked = addV4Condition(_ctx, table, conditiondata, unlockhash);
 
 	var amount = outputs[i].value;
+	var creatonAmount = amount;
 	if (type === 'coins') {
 		var custodyInfo = explorerTransaction.coinoutputcustodyfees[i];
 		appendCoinOutputUsingCustodyInfo(table, custodyInfo);
 		amount = custodyInfo.spendablevalue;
+		creatonAmount = custodyInfo.creationvalue;
 	} else {
 		appendStat(table, 'Value', amount);
 	}
 	return {
 		value: amount,
+		creationValue: creatonAmount,
 		locked: locked,
 	};
 }
@@ -1255,15 +1303,18 @@ function addV1T128Output(_ctx, table, explorerTransaction, i, type, outputs) {
 	var locked = addV128Condition(_ctx, table, outputs[i].condition.data);
 
 	var amount = outputs[i].value;
+	var creatonAmount = amount;
 	if (type === 'coins') {
 		var custodyInfo = explorerTransaction.coinoutputcustodyfees[i];
 		appendCoinOutputUsingCustodyInfo(table, custodyInfo);
 		amount = custodyInfo.spendablevalue;
+		creatonAmount = custodyInfo.creationvalue;
 	} else {
 		appendStat(table, 'Value', amount);
 	}
 	return {
 		value: amount,
+		creationValue: creatonAmount,
 		locked: locked,
 	};
 }

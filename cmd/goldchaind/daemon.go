@@ -96,6 +96,40 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			return
 		}
 
+		fmt.Println("Setting up root HTTP API handler...")
+
+		// handle all our endpoints over a router,
+		// which requires a user agent should one be configured
+		srv.Handle("/", rivineapi.RequireUserAgentHandler(router, cfg.RequiredUserAgent))
+
+		// register our special daemon HTTP handlers
+		router.GET("/daemon/constants", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+			constants := modules.NewDaemonConstants(cfg.BlockchainInfo, networkCfg.Constants)
+			rivineapi.WriteJSON(w, constants)
+		})
+		router.GET("/daemon/version", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+			rivineapi.WriteJSON(w, daemon.Version{
+				ChainVersion:    cfg.BlockchainInfo.ChainVersion,
+				ProtocolVersion: cfg.BlockchainInfo.ProtocolVersion,
+			})
+		})
+		router.POST("/daemon/stop", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
+			// can't write after we stop the server, so lie a bit.
+			rivineapi.WriteSuccess(w)
+
+			// need to flush the response before shutting down the server
+			f, ok := w.(http.Flusher)
+			if !ok {
+				panic("Server does not support flushing")
+			}
+			f.Flush()
+
+			if err := srv.Close(); err != nil {
+				servErrs <- err
+			}
+			cancel()
+		})
+
 		// Initialize the Rivine modules
 		var g modules.Gateway
 		if moduleIdentifiers.Contains(daemon.GatewayModule.Identifier()) {
@@ -323,40 +357,6 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			cfapi.RegisterExplorerCustodyFeesHTTPHandlers(router, cs, custodyFeesPlugin, cfe)
 
 		}
-
-		fmt.Println("Setting up root HTTP API handler...")
-
-		// register our special daemon HTTP handlers
-		router.GET("/daemon/constants", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-			constants := modules.NewDaemonConstants(cfg.BlockchainInfo, networkCfg.Constants)
-			rivineapi.WriteJSON(w, constants)
-		})
-		router.GET("/daemon/version", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-			rivineapi.WriteJSON(w, daemon.Version{
-				ChainVersion:    cfg.BlockchainInfo.ChainVersion,
-				ProtocolVersion: cfg.BlockchainInfo.ProtocolVersion,
-			})
-		})
-		router.POST("/daemon/stop", func(w http.ResponseWriter, _ *http.Request, _ httprouter.Params) {
-			// can't write after we stop the server, so lie a bit.
-			rivineapi.WriteSuccess(w)
-
-			// need to flush the response before shutting down the server
-			f, ok := w.(http.Flusher)
-			if !ok {
-				panic("Server does not support flushing")
-			}
-			f.Flush()
-
-			if err := srv.Close(); err != nil {
-				servErrs <- err
-			}
-			cancel()
-		})
-
-		// handle all our endpoints over a router,
-		// which requires a user agent should one be configured
-		srv.Handle("/", rivineapi.RequireUserAgentHandler(router, cfg.RequiredUserAgent))
 
 		if cs != nil {
 			cs.Start()

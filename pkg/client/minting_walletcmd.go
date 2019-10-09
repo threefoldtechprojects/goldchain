@@ -2,7 +2,6 @@ package client
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 
@@ -12,32 +11,25 @@ import (
 
 	"github.com/threefoldtech/rivine/pkg/cli"
 	client "github.com/threefoldtech/rivine/pkg/client"
+
+	gctypes "github.com/nbh-digital/goldchain/pkg/types"
 )
 
-//WalletCmdsOpts defines chain-specific options for the wallet commands
-type WalletCmdsOpts struct {
-	CoinDestructionTxVersion types.TransactionVersion
-	RequireMinerFees         bool
-}
-
-//CreateWalletCmds adds the wallet cli subcommands for the minting plugin
-func CreateWalletCmds(ccli *client.CommandLineClient, mintingDefinitionTxVersion, coinCreationTxVersion types.TransactionVersion, opts *WalletCmdsOpts) {
+// CreateMintingWalletCmds adds the wallet cli subcommands for the minting plugin
+func CreateMintingWalletCmds(ccli *client.CommandLineClient) {
 	bc, err := client.NewBaseClientFromCommandLineClient(ccli)
 	if err != nil {
 		panic(err)
 	}
-	walletCmd := &walletCmd{
+	walletCmd := &mintingWalletCmd{
 		cli:                        ccli,
-		walletClient:               client.NewWalletClient(bc),
+		walletClient:               NewWalletClient(bc),
 		txPoolClient:               client.NewTransactionPoolClient(bc),
-		mintingDefinitionTxVersion: mintingDefinitionTxVersion,
-		coinCreationTxVersion:      coinCreationTxVersion,
+		mintingDefinitionTxVersion: gctypes.TransactionVersionMinterDefinition,
+		coinCreationTxVersion:      gctypes.TransactionVersionCoinCreation,
+		requireMinerFees:           false,
+		coinDestructionTxVersion:   gctypes.TransactionVersionCoinDestruction,
 	}
-	if opts != nil {
-		walletCmd.requireMinerFees = opts.RequireMinerFees
-		walletCmd.coinDestructionTxVersion = opts.CoinDestructionTxVersion
-	}
-
 	// create root explore command and all subs
 	var (
 		createMinterDefinitionTxCmd = &cobra.Command{
@@ -67,6 +59,12 @@ The returned (raw) CoinCreationTransaction still has to be signed, prior to send
 	`,
 			Run: walletCmd.createCoinCreationTxCmd,
 		}
+		burnCoinsCmd = &cobra.Command{
+			Use:   "coins <amount>",
+			Short: "burn the given amount of coins",
+			Args:  cobra.ExactArgs(1),
+			Run:   walletCmd.burnCoinsCmd,
+		}
 	)
 
 	// add commands as wallet sub commands
@@ -81,50 +79,39 @@ The returned (raw) CoinCreationTransaction still has to be signed, prior to send
 	cli.ArbitraryDataFlagVar(createCoinCreationTxCmd.Flags(), &walletCmd.coinCreationTxCfg.Description,
 		"description", "optionally add a description to describe the origins of the coin creation, added as arbitrary data")
 
-	if opts != nil && opts.CoinDestructionTxVersion > 0 {
-		var (
-			burnCoinsCmd = &cobra.Command{
-				Use:   "coins <amount>",
-				Short: "burn the given amount of coins",
-				Args:  cobra.ExactArgs(1),
-				Run:   walletCmd.burnCoinsCmd,
-			}
-		)
+	// set the flags
+	cli.ArbitraryDataFlagVar(burnCoinsCmd.Flags(), &walletCmd.coinDestructionTxCfg.Description,
+		"description", "optionally add a description to describe the reasons of transfer of minting power, added as arbitrary data")
+	burnCoinsCmd.Flags().StringVar(
+		&walletCmd.coinDestructionTxCfg.RefundAddress,
+		"refund-address", "", "define a custom refund address")
+	burnCoinsCmd.Flags().BoolVar(
+		&walletCmd.coinDestructionTxCfg.RefundAddressNew,
+		"refund-address-new", false, "generate a new refund address if a refund needs to happen")
 
-		// set the flags
-		cli.ArbitraryDataFlagVar(burnCoinsCmd.Flags(), &walletCmd.coinDestructionTxCfg.Description,
-			"description", "optionally add a description to describe the reasons of transfer of minting power, added as arbitrary data")
-		burnCoinsCmd.Flags().StringVar(
-			&walletCmd.coinDestructionTxCfg.RefundAddress,
-			"refund-address", "", "define a custom refund address")
-		burnCoinsCmd.Flags().BoolVar(
-			&walletCmd.coinDestructionTxCfg.RefundAddressNew,
-			"refund-address-new", false, "generate a new refund address if a refund needs to happen")
-
-		// get the root command or create it
-		var burnRootCmd *cobra.Command
-		for _, cmd := range ccli.WalletCmd.Commands() {
-			if cmd.Name() == "burn" {
-				burnRootCmd = cmd
-				break
-			}
+	// get the root command or create it
+	var burnRootCmd *cobra.Command
+	for _, cmd := range ccli.WalletCmd.Commands() {
+		if cmd.Name() == "burn" {
+			burnRootCmd = cmd
+			break
 		}
-		if burnRootCmd == nil {
-			burnRootCmd = &cobra.Command{
-				Use:   "burn",
-				Short: "burn resources, using an available command",
-			}
-			ccli.WalletCmd.AddCommand(burnRootCmd)
-		}
-
-		// attach our burn command to the burn root cmd
-		burnRootCmd.AddCommand(burnCoinsCmd)
 	}
+	if burnRootCmd == nil {
+		burnRootCmd = &cobra.Command{
+			Use:   "burn",
+			Short: "burn resources, using an available command",
+		}
+		ccli.WalletCmd.AddCommand(burnRootCmd)
+	}
+
+	// attach our burn command to the burn root cmd
+	burnRootCmd.AddCommand(burnCoinsCmd)
 }
 
-type walletCmd struct {
+type mintingWalletCmd struct {
 	cli          *client.CommandLineClient
-	walletClient *client.WalletClient
+	walletClient *WalletClient
 	txPoolClient *client.TransactionPoolClient
 
 	mintingDefinitionTxVersion, coinCreationTxVersion types.TransactionVersion
@@ -145,7 +132,7 @@ type walletCmd struct {
 	requireMinerFees bool
 }
 
-func (walletCmd *walletCmd) createMinterDefinitionTxCmd(cmd *cobra.Command, args []string) {
+func (walletCmd *mintingWalletCmd) createMinterDefinitionTxCmd(cmd *cobra.Command, args []string) {
 	if len(args) != 1 {
 		cmd.UsageFunc()(cmd)
 		cli.Die("Invalid amount of arguments. One argume has to be given: <dest>|<rawCondition>")
@@ -176,7 +163,7 @@ func (walletCmd *walletCmd) createMinterDefinitionTxCmd(cmd *cobra.Command, args
 	json.NewEncoder(os.Stdout).Encode(tx.Transaction(walletCmd.mintingDefinitionTxVersion))
 }
 
-func (walletCmd *walletCmd) createCoinCreationTxCmd(cmd *cobra.Command, args []string) {
+func (walletCmd *mintingWalletCmd) createCoinCreationTxCmd(cmd *cobra.Command, args []string) {
 	currencyConvertor := walletCmd.cli.CreateCurrencyConvertor()
 
 	// Check that the remaining args are condition + value pairs
@@ -216,7 +203,7 @@ func (walletCmd *walletCmd) createCoinCreationTxCmd(cmd *cobra.Command, args []s
 	}
 }
 
-func (walletCmd *walletCmd) burnCoinsCmd(cmd *cobra.Command, args []string) {
+func (walletCmd *mintingWalletCmd) burnCoinsCmd(cmd *cobra.Command, args []string) {
 	currencyConvertor := walletCmd.cli.CreateCurrencyConvertor()
 	amount, err := currencyConvertor.ParseCoinString(args[0])
 	if err != nil {
@@ -237,7 +224,7 @@ func (walletCmd *walletCmd) burnCoinsCmd(cmd *cobra.Command, args []string) {
 		}
 	}
 	// fund the burn Tx
-	coinInputs, refundCoinOutput, err := walletCmd.walletClient.FundCoins(amount, refundAddress, walletCmd.coinDestructionTxCfg.RefundAddressNew)
+	coinInputs, custodyFeeCondition, refundCoinOutput, err := walletCmd.walletClient.FundCoins(amount, refundAddress, walletCmd.coinDestructionTxCfg.RefundAddressNew)
 	if err != nil {
 		cli.DieWithError("failed to fund burn transaction", err)
 	}
@@ -245,7 +232,10 @@ func (walletCmd *walletCmd) burnCoinsCmd(cmd *cobra.Command, args []string) {
 	// assemble the transaction
 	cdTx := minting.CoinDestructionTransaction{
 		CoinInputs: coinInputs,
-		MinerFees:  []types.Currency{walletCmd.cli.Config.MinimumTransactionFee},
+		CoinOutputs: []types.CoinOutput{
+			custodyFeeCondition,
+		},
+		MinerFees: []types.Currency{walletCmd.cli.Config.MinimumTransactionFee},
 	}
 	if refundCoinOutput != nil {
 		cdTx.CoinOutputs = append(cdTx.CoinOutputs, *refundCoinOutput)
@@ -289,49 +279,6 @@ func parseConditionString(str string) (condition types.UnlockConditionProxy, err
 	if err != nil {
 		return types.UnlockConditionProxy{}, fmt.Errorf(
 			"condition has to be UnlockHash or JSON-encoded UnlockCondition, output %q is neither", str)
-	}
-	return
-}
-
-type (
-	// parseCurrencyString takes the string representation of a currency value
-	parseCurrencyString func(string) (types.Currency, error)
-
-	outputPair struct {
-		Condition types.UnlockConditionProxy
-		Value     types.Currency
-	}
-)
-
-func parsePairedOutputs(args []string, parseCurrency parseCurrencyString) (pairs []outputPair, err error) {
-	argn := len(args)
-	if argn < 2 {
-		err = errors.New("not enough arguments, at least 2 required")
-		return
-	}
-	if argn%2 != 0 {
-		err = errors.New("arguments have to be given in pairs of '<dest>|<rawCondition>'+'<value>'")
-		return
-	}
-
-	for i := 0; i < argn; i += 2 {
-		// parse value first, as it's the one without any possibility of ambiguity
-		var pair outputPair
-		pair.Value, err = parseCurrency(args[i+1])
-		if err != nil {
-			err = fmt.Errorf("failed to parse amount/value for output #%d: %v", i/2, err)
-			return
-		}
-
-		// parse condition second
-		pair.Condition, err = parseConditionString(args[i])
-		if err != nil {
-			err = fmt.Errorf("failed to parse condition for output #%d: %v", i/2, err)
-			return
-		}
-
-		// append succesfully parsed pair
-		pairs = append(pairs, pair)
 	}
 	return
 }

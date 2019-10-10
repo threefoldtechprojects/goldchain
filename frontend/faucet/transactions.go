@@ -24,12 +24,6 @@ var (
 )
 
 func updateAddressAuthorization(address types.UnlockHash, authorize bool) (types.TransactionID, error) {
-	// Check if auth status is in progress
-	err := checkAuthStatusInProgress(address)
-	if err != nil {
-		return types.TransactionID{}, err
-	}
-
 	// Create transaction
 	tx := authcointx.AuthAddressUpdateTransaction{Nonce: types.RandomTransactionNonce()}
 	if authorize {
@@ -91,20 +85,6 @@ func dripCoins(address types.UnlockHash, amount types.Currency) (types.Transacti
 		log.Println("[ERROR] /wallet/coins - request body:", string(data))
 	}
 	return resp.TransactionID, err
-}
-
-// checkAuthStatusInProgress checks if a transaction for updating auth status is already in progress.
-// This by checking if a transaction with the provided unlockhash is in the transactionpool.
-func checkAuthStatusInProgress(address types.UnlockHash) error {
-	var txpoolResp api.TransactionPoolGET
-	err := httpClient.GetWithResponse(fmt.Sprintf("/transactionpool/transactions?unockhash=%s", address.String()), &txpoolResp)
-	if err != nil {
-		return err
-	}
-	if len(txpoolResp.Transactions) > 0 {
-		return errAuthorizationInProgress
-	}
-	return nil
 }
 
 // checkAuthStatusCompleted checks if an address is authorized else it returns an error.

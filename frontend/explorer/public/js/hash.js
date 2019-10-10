@@ -266,36 +266,81 @@ function appendV1Transaction(infoBody, explorerTransaction, confirmed) {
 	}
 	var coinoutputs = getCoinOutputsFromExplorerTransaction(explorerTransaction);
 	if (coinoutputs != null && coinoutputs.length > 0) {
-		appendStatTableTitle(infoBody, 'Coin Outputs');
+		var custodyFeeCoinOutputIndex = 0;
 		for (var i = 0; i < coinoutputs.length; i++) {
-			var f;
-			switch (coinoutputs[i].condition.type) {
-				// handle nil transactions
-				case undefined:
-				case 0:
-					f = addV1NilOutput;
-					break;
-				case 1:
-					f = addV1T1Output;
-					break;
-				case 2:
-					f = addV1T2Output;
-					break;
-				case 3:
-					f = addV1T3Output;
-					break;
-				case 4:
-					f = addV1T4Output;
-					break;
-				case 128:
-					f = addV1T128Output;
-					break;
-				default:
-					continue;
+			if (coinoutputs[i].condition.type == 128) {
+				custodyFeeCoinOutputIndex = i;
+				break;
 			}
+		}
+		custodyfeecoinoutput = coinoutputs[custodyFeeCoinOutputIndex];
+		appendStatTableTitle(infoBody, 'Custody Fee Coin Output');
+		var f;
+		var cor;
+		switch (custodyfeecoinoutput.condition.type) {
+			// handle nil transactions
+			case undefined:
+			case 0:
+				f = addV1NilOutput;
+				break;
+			case 1:
+				f = addV1T1Output;
+				break;
+			case 2:
+				f = addV1T2Output;
+				break;
+			case 3:
+				f = addV1T3Output;
+				break;
+			case 4:
+				f = addV1T4Output;
+				break;
+			case 128:
+				f = addV1T128Output;
+				break;
+		}
+		if (f !== null) {
 			var outputTable = createStatsTable()
-			f(ctx, outputTable, explorerTransaction, i, 'coins', coinoutputs);
+			cor = f(ctx, outputTable, explorerTransaction, custodyFeeCoinOutputIndex, 'coins');
 			infoBody.appendChild(outputTable)
+		}
+		if (coinoutputs.length > 1) {
+			appendStatTableTitle(infoBody, 'Coin Outputs');
+			for(var i = 0; i < coinoutputs.length; i++) {
+				if (i === custodyFeeCoinOutputIndex) {
+					continue;
+				}
+				var refundcoinoutput = coinoutputs[i];
+				var f;
+				var cor;
+				switch (refundcoinoutput.condition.type) {
+					// handle nil transactions
+					case undefined:
+					case 0:
+						f = addV1NilOutput;
+						break;
+					case 1:
+						f = addV1T1Output;
+						break;
+					case 2:
+						f = addV1T2Output;
+						break;
+					case 3:
+						f = addV1T3Output;
+						break;
+					case 4:
+						f = addV1T4Output;
+						break;
+					case 128:
+						f = addV1T128Output;
+						break;
+				}
+				if (f !== null) {
+					var outputTable = createStatsTable()
+					cor = f(ctx, outputTable, explorerTransaction, i, 'coins');
+					infoBody.appendChild(outputTable)
+				}
+			}
 		}
 	}
 	if (explorerTransaction.rawtransaction.data.blockstakeinputs != null
@@ -627,7 +672,14 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 		}
 	}
 	if (explorerTransaction.rawtransaction.data.coinoutputs) {
-		custodyfeecoinoutput = explorerTransaction.rawtransaction.data.coinoutputs[0];
+		var custodyFeeCoinOutputIndex = 0;
+		for (var i = 0; i < explorerTransaction.rawtransaction.data.coinoutputs.length; i++) {
+			if (explorerTransaction.rawtransaction.data.coinoutputs[i].condition.type == 128) {
+				custodyFeeCoinOutputIndex = i;
+				break;
+			}
+		}
+		custodyfeecoinoutput = explorerTransaction.rawtransaction.data.coinoutputs[custodyFeeCoinOutputIndex];
 		appendStatTableTitle(infoBody, 'Custody Fee Coin Output');
 		var f;
 		var cor;
@@ -655,41 +707,46 @@ function appendV130Transaction(infoBody, explorerTransaction, confirmed) {
 		}
 		if (f !== null) {
 			var outputTable = createStatsTable()
-			cor = f(ctx, outputTable, explorerTransaction, 0, 'coins');
+			cor = f(ctx, outputTable, explorerTransaction, custodyFeeCoinOutputIndex, 'coins');
 			infoBody.appendChild(outputTable)
 		}
 		if (explorerTransaction.rawtransaction.data.coinoutputs.length > 1) {
-			refundcoinoutput = explorerTransaction.rawtransaction.data.coinoutputs[1];
-			appendStatTableTitle(infoBody, 'Refund Coin Output');
-			var f;
-			var cor;
-			switch (refundcoinoutput.condition.type) {
-				// handle nil transactions
-				case undefined:
-				case 0:
-					f = addV1NilOutput;
-					break;
-				case 1:
-					f = addV1T1Output;
-					break;
-				case 2:
-					f = addV1T2Output;
-					break;
-				case 3:
-					f = addV1T3Output;
-					break;
-				case 4:
-					f = addV1T4Output;
-					break;
-				case 128:
-					f = addV1T128Output;
-					break;
-			}
-			if (f !== null) {
-				var outputTable = createStatsTable()
-				cor = f(ctx, outputTable, explorerTransaction, 1, 'coins');
-				infoBody.appendChild(outputTable)
-				coinsBurnedAmount -= +cor.creationValue;
+			appendStatTableTitle(infoBody, 'Refund Coin Outputs');
+			for(var i = 0; i < explorerTransaction.rawtransaction.data.coinoutputs.length; i++) {
+				if (i === custodyFeeCoinOutputIndex) {
+					continue;
+				}
+				var refundcoinoutput = explorerTransaction.rawtransaction.data.coinoutputs[i];
+				var f;
+				var cor;
+				switch (refundcoinoutput.condition.type) {
+					// handle nil transactions
+					case undefined:
+					case 0:
+						f = addV1NilOutput;
+						break;
+					case 1:
+						f = addV1T1Output;
+						break;
+					case 2:
+						f = addV1T2Output;
+						break;
+					case 3:
+						f = addV1T3Output;
+						break;
+					case 4:
+						f = addV1T4Output;
+						break;
+					case 128:
+						f = addV1T128Output;
+						break;
+				}
+				if (f !== null) {
+					var outputTable = createStatsTable()
+					cor = f(ctx, outputTable, explorerTransaction, i, 'coins');
+					infoBody.appendChild(outputTable)
+					coinsBurnedAmount -= +cor.creationValue;
+				}
 			}
 		}
 	}

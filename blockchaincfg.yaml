@@ -64,7 +64,7 @@ blockchain:
           condition: 01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f
         minting: 01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f
         authcoin: 01215a03f0098c4fcd801854da4d7bb2e9c78b4d3598fec89f42bc19fb79889bbf7a6aabdbe95f
-        genesisBlockTimestamp: 1564142400
+        genesisBlockTimestamp: 1570710000
       blockSizeLimit: 2000000
       arbitraryDataSizeLimit: 83
       blockCreatorFee: "0.0"

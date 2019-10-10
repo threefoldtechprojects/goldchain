@@ -145,7 +145,7 @@ func GetTestnetGenesis() types.ChainConstants {
 	cfg.MaturityDelay = 720
 
 	// The genesis timestamp
-	cfg.GenesisTimestamp = types.Timestamp(1564142400)
+	cfg.GenesisTimestamp = types.Timestamp(1570710000)
 
 	cfg.MedianTimestampWindow = 11
 

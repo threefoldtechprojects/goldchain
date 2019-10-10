@@ -50,7 +50,7 @@ var requestTemplate = mustTemplate("request.html", fmt.Sprintf(`
 			<div><input type="submit" value="Request address authorization update" style="width:20em;height:2em;font-weight:bold;font-size:1em;"></div>
 		</form>
 	
-		<div style="margin-top:50px;"><small>goldchain faucet v0.2</small></div>
+		<div style="margin-top:50px;"><small>goldchain faucet v0.4</small></div>
 	</div>
 </body>
 `, coinsToGive))
@@ -74,7 +74,7 @@ var coinConfirmationTemplate = mustTemplate("coinconfirmation.html", fmt.Sprintf
 		<p>You can look up the transaction using the following ID:</p>
 		<div><code>{{.TransactionID}}</code></div>
 		<p><a href="/">Return to the homepage</a></p>
-		<div style="margin-top:50px;"><small>goldchain faucet v0.2</small></div>
+		<div style="margin-top:50px;"><small>goldchain faucet v0.4</small></div>
 	</div>
 </body>
 `, coinsToGive))
@@ -99,7 +99,7 @@ var authorizationConfirmationTemplate = mustTemplate("authorizationconfirmation.
 		<p>You can look up the transaction using the following ID:</p>
 		<div><code>{{.TransactionID}}</code></div>
 		<p><a href="/">Return to the homepage</a></p>
-		<div style="margin-top:50px;"><small>goldchain faucet v0.2</small></div>
+		<div style="margin-top:50px;"><small>goldchain faucet v0.4</small></div>
 	</div>
 </body>
 `)

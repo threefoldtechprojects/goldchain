@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	rawVersion = "v0.2"
+	rawVersion = "v0.4"
 	// Version of the chain binaries.
 	//
 	// Value is defined by a private build flag,

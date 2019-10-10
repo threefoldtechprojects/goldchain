@@ -26,7 +26,7 @@ generation:
 blockchain:
   name: goldchain
   longName: GoldChain
-  version: v0.2
+  version: v0.4
   repository: github.com/nbh-digital/goldchain
   currency:
     unit: GFT

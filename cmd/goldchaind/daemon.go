@@ -185,7 +185,30 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			for txVersion, validators := range setupNetworkCfg.MappedValidators {
 				cs.SetTransactionVersionMappedValidators(txVersion, validators...)
 			}
+		}
 
+		var tpool modules.TransactionPool
+		if moduleIdentifiers.Contains(daemon.TransactionPoolModule.Identifier()) {
+			printModuleIsLoading("transaction pool")
+			tpool, err = transactionpool.New(cs, g,
+				filepath.Join(cfg.RootPersistentDir, modules.TransactionPoolDir),
+				cfg.BlockchainInfo, networkCfg.Constants, cfg.VerboseLogging)
+			if err != nil {
+				servErrs <- err
+				cancel()
+				return
+			}
+			rivineapi.RegisterTransactionPoolHTTPHandlers(router, cs, tpool, cfg.APIPassword)
+			defer func() {
+				fmt.Println("Closing transaction pool...")
+				err := tpool.Close()
+				if err != nil {
+					fmt.Println("Error during transaction pool shutdown:", err)
+				}
+			}()
+		}
+
+		if cs != nil {
 			// create the minting extension plugin
 			mintingPlugin = minting.NewMintingPlugin(
 				setupNetworkCfg.GenesisMintCondition,
@@ -212,7 +235,17 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				},
 			)
 			// add the HTTP handlers for the auth coin tx extension as well
-			authcointxapi.RegisterConsensusAuthCoinHTTPHandlers(router, authCoinTxPlugin)
+			if tpool != nil {
+				authcointxapi.RegisterConsensusAuthCoinHTTPHandlers(
+					router, authCoinTxPlugin,
+					tpool, goldchaintypes.TransactionVersionAuthConditionUpdate,
+					goldchaintypes.TransactionVersionAuthAddressUpdate)
+			} else {
+				authcointxapi.RegisterConsensusAuthCoinHTTPHandlers(
+					router, authCoinTxPlugin,
+					nil, goldchaintypes.TransactionVersionAuthConditionUpdate,
+					goldchaintypes.TransactionVersionAuthAddressUpdate)
+			}
 
 			// register the custody fees plugin
 			custodyFeesPlugin = cfplugin.NewPlugin(
@@ -259,26 +292,6 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			}
 		}
 
-		var tpool modules.TransactionPool
-		if moduleIdentifiers.Contains(daemon.TransactionPoolModule.Identifier()) {
-			printModuleIsLoading("transaction pool")
-			tpool, err = transactionpool.New(cs, g,
-				filepath.Join(cfg.RootPersistentDir, modules.TransactionPoolDir),
-				cfg.BlockchainInfo, networkCfg.Constants, cfg.VerboseLogging)
-			if err != nil {
-				servErrs <- err
-				cancel()
-				return
-			}
-			rivineapi.RegisterTransactionPoolHTTPHandlers(router, cs, tpool, cfg.APIPassword)
-			defer func() {
-				fmt.Println("Closing transaction pool...")
-				err := tpool.Close()
-				if err != nil {
-					fmt.Println("Error during transaction pool shutdown:", err)
-				}
-			}()
-		}
 		var w goldchainmodules.Wallet
 		if moduleIdentifiers.Contains(daemon.WalletModule.Identifier()) {
 			printModuleIsLoading("wallet")
@@ -358,9 +371,18 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 			}()
 
 			mintingapi.RegisterExplorerMintingHTTPHandlers(router, mintingPlugin)
-			authcointxapi.RegisterExplorerAuthCoinHTTPHandlers(router, authCoinTxPlugin)
+			if tpool != nil {
+				authcointxapi.RegisterExplorerAuthCoinHTTPHandlers(
+					router, authCoinTxPlugin,
+					tpool, goldchaintypes.TransactionVersionAuthConditionUpdate,
+					goldchaintypes.TransactionVersionAuthAddressUpdate)
+			} else {
+				authcointxapi.RegisterExplorerAuthCoinHTTPHandlers(
+					router, authCoinTxPlugin,
+					nil, goldchaintypes.TransactionVersionAuthConditionUpdate,
+					goldchaintypes.TransactionVersionAuthAddressUpdate)
+			}
 			cfapi.RegisterExplorerCustodyFeesHTTPHandlers(router, cs, custodyFeesPlugin, cfe)
-
 		}
 
 		if cs != nil {

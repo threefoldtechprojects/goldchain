@@ -98,7 +98,7 @@ func (view *txCoinOutputInfoView) GetCoinOutputInfo(id types.CoinOutputID, chain
 	if coBucket == nil {
 		return CoinOutputInfo{}, fmt.Errorf("corrupt custody fee plugin: did not find any coin outputs")
 	}
-	return getCoinOutputInfo(coBucket, id, chainTime, true)
+	return getCoinOutputInfo(coBucket, id, chainTime)
 }
 
 func (view *txCoinOutputInfoView) GetCoinOutputInfoPreComputation(id types.CoinOutputID) (CoinOutputInfoPreComputation, error) {
@@ -549,7 +549,7 @@ func (p *Plugin) validateCustodyFeePresent(tx modules.ConsensusTransaction, ctx 
 	// ... look up each coin input in our plugin DB,
 	//     to check how much the fee will cost
 	for _, ci := range tx.CoinInputs {
-		info, err := getCoinOutputInfo(coBucket, ci.ParentID, computationTime, false)
+		info, err := getCoinOutputInfo(coBucket, ci.ParentID, computationTime)
 		if err != nil {
 			return err
 		}
@@ -598,7 +598,7 @@ func getCoinOutputInfoPreComputation(coBucket *bolt.Bucket, id types.CoinOutputI
 	}, nil
 }
 
-func getCoinOutputInfo(coBucket *bolt.Bucket, id types.CoinOutputID, chainTime types.Timestamp, autoCorrectChainTime bool) (CoinOutputInfo, error) {
+func getCoinOutputInfo(coBucket *bolt.Bucket, id types.CoinOutputID, chainTime types.Timestamp) (CoinOutputInfo, error) {
 	var info CoinOutputInfo
 	preComputationInfo, err := getCoinOutputInfoPreComputation(coBucket, id)
 	if err != nil {
@@ -612,11 +612,6 @@ func getCoinOutputInfo(coBucket *bolt.Bucket, id types.CoinOutputID, chainTime t
 	}
 	if preComputationInfo.FeeComputationTime == 0 {
 		if info.CreationTime > chainTime {
-			if !autoCorrectChainTime {
-				return info, fmt.Errorf(
-					"unspent coin output %s is created in the future (%d) compared to given chain time %d",
-					id.String(), info.CreationTime, chainTime)
-			}
 			info.FeeComputationTime = info.CreationTime
 		} else {
 			info.FeeComputationTime = chainTime

@@ -228,6 +228,12 @@ func runDaemon(cfg ExtendedDaemonConfig, moduleIdentifiers daemon.ModuleIdentifi
 				goldchaintypes.TransactionVersionAuthAddressUpdate,
 				goldchaintypes.TransactionVersionAuthConditionUpdate,
 				&authcointx.PluginOpts{
+					UnauthorizedCoinTransactionExceptionCallback: func(tx modules.ConsensusTransaction, dedupAddresses []types.UnlockHash, ctx types.TransactionValidationContext) (bool, error) {
+						if tx.Version != types.TransactionVersionZero && tx.Version != types.TransactionVersionOne {
+							return false, nil
+						}
+						return (len(dedupAddresses) == 1 && len(tx.CoinOutputs) <= 2), nil
+					},
 					UnlockHashFilter: func(uh types.UnlockHash) bool {
 						return uh.Type != types.UnlockTypeNil &&
 							uh.Type != types.UnlockTypeAtomicSwap && uh.Type != cftypes.UnlockTypeCustodyFee

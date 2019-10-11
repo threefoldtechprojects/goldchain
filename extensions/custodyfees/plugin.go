@@ -308,6 +308,7 @@ func (p *Plugin) applyTransaction(txn modules.ConsensusTransaction, coBucket *bo
 			return fmt.Errorf("failed to link coin output's ID to its block time: %v", err)
 		}
 	}
+	var ct types.Timestamp
 	for _, ci := range txn.CoinInputs {
 		currentInfo, err := getCoinOutputInfoPreComputation(coBucket, ci.ParentID)
 		if err != nil {
@@ -317,15 +318,14 @@ func (p *Plugin) applyTransaction(txn modules.ConsensusTransaction, coBucket *bo
 		if err != nil {
 			return fmt.Errorf("failed to rivbin marshal coin output (used as coin input) ID: %v", err)
 		}
-		if currentInfo.CreationTime > computationTime {
-			return fmt.Errorf(
-				"spent coin output %s is created in the future (%d) compared to given computation time %d",
-				ci.ParentID.String(), currentInfo.CreationTime, computationTime)
+		ct = computationTime
+		if currentInfo.CreationTime > ct {
+			ct = currentInfo.CreationTime
 		}
 		bInfo, err := rivbin.Marshal(coinOutputDBInfo{
 			CreationTime:       currentInfo.CreationTime,
 			CreationValue:      currentInfo.CreationValue,
-			FeeComputationTime: computationTime,
+			FeeComputationTime: ct,
 			IsCustodyFee:       false,
 		})
 		if err != nil {

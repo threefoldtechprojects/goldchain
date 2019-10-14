@@ -168,9 +168,9 @@ func (e *Explorer) ProcessConsensusChange(cc modules.ConsensusChange) {
 				var locked bool
 				if lockValue > 0 {
 					if lockValue < types.LockTimeMinTimestampValue {
-						locked = types.BlockHeight(lockValue) < blockheight
+						locked = types.BlockHeight(lockValue) > blockheight
 					} else {
-						locked = types.Timestamp(lockValue) < blocktime
+						locked = types.Timestamp(lockValue) > blocktime
 					}
 				}
 				// get spendable and custody fee

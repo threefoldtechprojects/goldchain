@@ -500,10 +500,7 @@ func (p *Plugin) validateCustodyFeePresent(tx modules.ConsensusTransaction, ctx 
 	if computationTime == 0 {
 		return errors.New("tx does not contain the required coin output for the custody fee, while coin inputs are spent")
 	}
-	if tx.BlockTime < computationTime {
-		return errors.New("registered custody fee computation time cannot be in the future")
-	}
-	if diff := tx.BlockTime - computationTime; diff > p.maxAllowedComputationTimeAdvance {
+	if diff := tx.BlockTime - computationTime; tx.BlockTime > computationTime && diff > p.maxAllowedComputationTimeAdvance {
 		// try to go back in time and see if we can find a block with the matching timestamp,
 		// and that the block is within the allowed past-range
 		maxBlocks := p.maxFallbackBlocksInThePast

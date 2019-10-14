@@ -1006,11 +1006,18 @@ function addV1T2Input(infoBody, explorerTransaction, i, type) {
 
 	var doms = appendStat(table, 'ID', '');
 	linkHash(doms[2], explorerTransaction.rawtransaction.data[inputspecifier][i].parentid);
-	doms = appendStat(table, 'Address', '');
+	doms = appendStat(table, 'Contract Address', '');
+	var unlockhash = explorerTransaction[inputoutputspecifier][i].unlockhash;
+	if (!unlockhash) {
+		unlockhash = "000000000000000000000000000000000000000000000000000000000000000000000000000000";
+	}
+	linkHash(doms[2], unlockhash);
 	var secret = explorerTransaction.rawtransaction.data[inputspecifier][i].fulfillment.data.secret;
 	if (!secret || 0 === secret.length) {
+		doms = appendStat(table, 'Address', '');
 		linkHash(doms[2], explorerTransaction[inputoutputspecifier][i].condition.data.sender);
 	} else {
+		doms = appendStat(table, 'Address', '');
 		linkHash(doms[2], explorerTransaction[inputoutputspecifier][i].condition.data.receiver);
 	}
 

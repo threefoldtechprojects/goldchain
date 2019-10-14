@@ -347,7 +347,7 @@ func (w *Wallet) SendCoins(amount types.Currency, cond types.UnlockConditionProx
 			Condition: cond,
 			Value:     amount,
 		},
-	}, nil, nil, nil, false)
+	}, nil, nil, nil, true)
 }
 
 // SendBlockStakes creates a transaction sending 'amount' to whoever can fulfill the condition. The transaction
@@ -358,7 +358,7 @@ func (w *Wallet) SendBlockStakes(amount types.Currency, cond types.UnlockConditi
 			Condition: cond,
 			Value:     amount,
 		},
-	}, nil, nil, false)
+	}, nil, nil, true)
 }
 
 // SendOutputs is a tool for sending coins and block stakes from the wallet, to one or multiple addreses.

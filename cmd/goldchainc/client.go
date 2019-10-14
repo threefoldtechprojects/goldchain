@@ -16,6 +16,7 @@ func NewCommandLineClient(address, name, userAgent string) (*CommandLineClient, 
 	client, err := client.NewCommandLineClient(address, name, userAgent, &client.OptionalCommandLineClientCommands{
 		CommandLineClient: rivCli,
 		WalletCmd:         gccli.CreateWalletCmd(rivCli),
+		AtomicSwapCmd:     gccli.CreateAtomicSwapCmd(rivCli),
 	})
 	if err != nil {
 		return nil, err

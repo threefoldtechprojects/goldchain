@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/threefoldtech/rivine/pkg/cli"
-	"github.com/threefoldtech/rivine/types"
 	"github.com/threefoldtech/rivine/pkg/client"
+	"github.com/threefoldtech/rivine/types"
 )
 
 func parseCoinArg(cc client.CurrencyConvertor, str string) types.Currency {

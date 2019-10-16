@@ -12,13 +12,13 @@ import (
 // PluginClient is used to be able to get custody fee information
 // for a coin output.
 type PluginClient struct {
-	client       *client.BaseClient
+	client       client.BaseClient
 	rootEndpoint string
 }
 
 // NewPluginConsensusClient creates a new PluginClient,
 // that can be used for easy interaction with the Custody Fees Extension API exposed via the Consensus endpoints
-func NewPluginConsensusClient(cli *client.BaseClient) *PluginClient {
+func NewPluginConsensusClient(cli client.BaseClient) *PluginClient {
 	if cli == nil {
 		panic("no BaseClient given")
 	}
@@ -30,7 +30,7 @@ func NewPluginConsensusClient(cli *client.BaseClient) *PluginClient {
 
 // NewPluginExplorerClient creates a new PluginClient,
 // that can be used for easy interaction with the Custody Fees Extension API exposed via the Explorer endpoints
-func NewPluginExplorerClient(cli *client.BaseClient) *PluginClient {
+func NewPluginExplorerClient(cli client.BaseClient) *PluginClient {
 	if cli == nil {
 		panic("no BaseClient given")
 	}

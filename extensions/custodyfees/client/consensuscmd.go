@@ -15,10 +15,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func CreateConsensusSubCmds(ccli *rivinecli.CommandLineClient) {
-	bc, err := client.NewBaseClientFromCommandLineClient(ccli)
+func CreateConsensusSubCmds(ccli *rivinecli.CommandLineClient) error {
+	bc, err := client.NewLazyBaseClientFromCommandLineClient(ccli)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	consensusSubCmds := &consensusSubCmds{
@@ -53,6 +53,8 @@ func CreateConsensusSubCmds(ccli *rivinecli.CommandLineClient) {
 	getCoinOutputInfoCmd.Flags().Var(
 		cli.NewEncodingTypeFlag(0, &consensusSubCmds.getCoinOutputInfoCfg.EncodingType, 0), "encoding",
 		cli.EncodingTypeFlagDescription(0))
+
+	return nil
 }
 
 type consensusSubCmds struct {

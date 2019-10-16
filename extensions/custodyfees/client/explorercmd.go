@@ -17,10 +17,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func CreateExplorerSubCmds(ccli *rivinecli.CommandLineClient) {
-	bc, err := client.NewBaseClientFromCommandLineClient(ccli)
+func CreateExplorerSubCmds(ccli *rivinecli.CommandLineClient) error {
+	bc, err := client.NewLazyBaseClientFromCommandLineClient(ccli)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	explorerSubCmds := &explorerSubCmds{
@@ -64,6 +64,8 @@ func CreateExplorerSubCmds(ccli *rivinecli.CommandLineClient) {
 	getChainFactsCmd.Flags().Var(
 		cli.NewEncodingTypeFlag(0, &explorerSubCmds.getChainFactsCfg.EncodingType, 0), "encoding",
 		cli.EncodingTypeFlagDescription(0))
+
+	return nil
 }
 
 type explorerSubCmds struct {

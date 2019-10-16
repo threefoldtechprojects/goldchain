@@ -13,12 +13,12 @@ import (
 
 // WalletClient is used to easily interact with the wallet through the HTTP REST API.
 type WalletClient struct {
-	bc *client.BaseClient
+	bc client.BaseClient
 }
 
 // NewWalletClient creates a new WalletClient,
 // that can be used for easy interaction with the Wallet API exposed via the HTTP REST API.
-func NewWalletClient(bc *client.BaseClient) *WalletClient {
+func NewWalletClient(bc client.BaseClient) *WalletClient {
 	if bc == nil {
 		panic("no BaseClient given")
 	}
